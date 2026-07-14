@@ -1,0 +1,16 @@
+# Dependencias
+**/node_modules/
+
+# Variables privadas
+**/.env
+**/.env.*
+!**/.env.example
+
+# Archivos compilados
+**/dist/
+
+# Registros
+*.log
+
+# Configuración local de VS Code
+.vscode/

@@ -1,0 +1,82 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #0d0d12;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.welcome-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 25px;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(137, 73, 255, 0.4),
+      transparent 35%
+    ),
+    #0d0d12;
+  color: white;
+}
+
+.welcome-card {
+  width: min(100%, 600px);
+  padding: 45px;
+  border: 1px solid #37333f;
+  border-radius: 20px;
+  background: #17171e;
+}
+
+.welcome-logo {
+  color: #ad7aff;
+  font-weight: 800;
+}
+
+.welcome-card h1 {
+  font-size: 40px;
+}
+
+.welcome-card > p {
+  color: #aaa7b1;
+  line-height: 1.7;
+}
+
+.user-information {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 14px;
+  margin: 30px 0;
+  padding: 20px;
+  border-radius: 12px;
+  background: #202028;
+}
+
+.user-information span {
+  color: #98959f;
+}
+
+.welcome-card button {
+  padding: 13px 22px;
+  border: none;
+  border-radius: 10px;
+  background: #9357ff;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}

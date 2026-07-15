@@ -1,6 +1,11 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db");
+const {
+  buscarUsuarioPorCorreo,
+  agregarUsuario,
+} = require("../data/usuarios.mock");
+
+const JWT_SECRET = process.env.JWT_SECRET || "istream-local-dev-secret";
 
 /**
  * Registro temporal.
@@ -25,32 +30,25 @@ exports.registrar = async (req, res) => {
 
     const correoNormalizado = correo.trim().toLowerCase();
 
-    const [usuariosExistentes] = await pool.execute(
-      "SELECT id_usuario FROM usuarios WHERE correo = ?",
-      [correoNormalizado]
-    );
-
-    if (usuariosExistentes.length > 0) {
+    if (buscarUsuarioPorCorreo(correoNormalizado)) {
       return res.status(409).json({
         mensaje: "Ya existe un usuario con ese correo.",
       });
     }
 
     const contrasenaHash = await bcrypt.hash(contrasena, 12);
-
-    const [resultado] = await pool.execute(
-      `INSERT INTO usuarios
-       (nombre, correo, contrasena_hash)
-       VALUES (?, ?, ?)`,
-      [nombre.trim(), correoNormalizado, contrasenaHash]
-    );
+    const usuarioCreado = agregarUsuario({
+      nombre,
+      correo: correoNormalizado,
+      contrasenaHash,
+    });
 
     return res.status(201).json({
       mensaje: "Usuario registrado correctamente.",
       usuario: {
-        id: resultado.insertId,
-        nombre: nombre.trim(),
-        correo: correoNormalizado,
+        id: usuarioCreado.id_usuario,
+        nombre: usuarioCreado.nombre,
+        correo: usuarioCreado.correo,
       },
     });
   } catch (error) {
@@ -76,28 +74,13 @@ exports.iniciarSesion = async (req, res) => {
     }
 
     const correoNormalizado = correo.trim().toLowerCase();
+    const usuario = buscarUsuarioPorCorreo(correoNormalizado);
 
-    const [resultados] = await pool.execute(
-      `SELECT
-          id_usuario,
-          nombre,
-          correo,
-          contrasena_hash,
-          rol,
-          estado
-       FROM usuarios
-       WHERE correo = ?
-       LIMIT 1`,
-      [correoNormalizado]
-    );
-
-    if (resultados.length === 0) {
+    if (!usuario) {
       return res.status(401).json({
         mensaje: "Correo o contraseña incorrectos.",
       });
     }
-
-    const usuario = resultados[0];
 
     if (!usuario.estado) {
       return res.status(403).json({
@@ -121,7 +104,7 @@ exports.iniciarSesion = async (req, res) => {
         id: usuario.id_usuario,
         rol: usuario.rol,
       },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       {
         expiresIn: "2h",
       }
@@ -135,6 +118,9 @@ exports.iniciarSesion = async (req, res) => {
         nombre: usuario.nombre,
         correo: usuario.correo,
         rol: usuario.rol,
+        fotoPerfil: usuario.foto_perfil,
+        telefono: usuario.telefono,
+        ciudad: usuario.ciudad,
       },
     });
   } catch (error) {

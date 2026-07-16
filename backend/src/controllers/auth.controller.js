@@ -2,10 +2,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../config/db");
 
+const JWT_SECRET =
+  process.env.JWT_SECRET || "istream-local-dev-secret";
+
 /**
- * Registro temporal.
- * Lo utilizaremos solamente para crear un usuario de prueba.
- * Hoy no construiremos todavía la pantalla de registro.
+ * Registra un usuario en MySQL.
  */
 exports.registrar = async (req, res) => {
   try {
@@ -13,20 +14,27 @@ exports.registrar = async (req, res) => {
 
     if (!nombre || !correo || !contrasena) {
       return res.status(400).json({
-        mensaje: "Nombre, correo y contraseña son obligatorios.",
+        mensaje:
+          "Nombre, correo y contraseña son obligatorios.",
       });
     }
 
     if (contrasena.length < 8) {
       return res.status(400).json({
-        mensaje: "La contraseña debe tener al menos 8 caracteres.",
+        mensaje:
+          "La contraseña debe tener al menos 8 caracteres.",
       });
     }
 
+    const nombreNormalizado = nombre.trim();
     const correoNormalizado = correo.trim().toLowerCase();
 
+    // Buscar si el correo ya existe en MySQL.
     const [usuariosExistentes] = await pool.execute(
-      "SELECT id_usuario FROM usuarios WHERE correo = ?",
+      `SELECT id_usuario
+       FROM usuarios
+       WHERE correo = ?
+       LIMIT 1`,
       [correoNormalizado]
     );
 
@@ -36,21 +44,37 @@ exports.registrar = async (req, res) => {
       });
     }
 
-    const contrasenaHash = await bcrypt.hash(contrasena, 12);
+    // Proteger la contraseña.
+    const contrasenaHash = await bcrypt.hash(
+      contrasena,
+      12
+    );
 
+    // Insertar el usuario en MySQL.
     const [resultado] = await pool.execute(
       `INSERT INTO usuarios
-       (nombre, correo, contrasena_hash)
-       VALUES (?, ?, ?)`,
-      [nombre.trim(), correoNormalizado, contrasenaHash]
+       (
+         nombre,
+         correo,
+         contrasena_hash,
+         rol,
+         estado
+       )
+       VALUES (?, ?, ?, 'usuario', TRUE)`,
+      [
+        nombreNormalizado,
+        correoNormalizado,
+        contrasenaHash,
+      ]
     );
 
     return res.status(201).json({
       mensaje: "Usuario registrado correctamente.",
       usuario: {
         id: resultado.insertId,
-        nombre: nombre.trim(),
+        nombre: nombreNormalizado,
         correo: correoNormalizado,
+        rol: "usuario",
       },
     });
   } catch (error) {
@@ -58,12 +82,16 @@ exports.registrar = async (req, res) => {
 
     return res.status(500).json({
       mensaje: "Ocurrió un error al registrar el usuario.",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined,
     });
   }
 };
 
 /**
- * Inicio de sesión.
+ * Inicia sesión consultando MySQL.
  */
 exports.iniciarSesion = async (req, res) => {
   try {
@@ -71,20 +99,25 @@ exports.iniciarSesion = async (req, res) => {
 
     if (!correo || !contrasena) {
       return res.status(400).json({
-        mensaje: "Correo y contraseña son obligatorios.",
+        mensaje:
+          "Correo y contraseña son obligatorios.",
       });
     }
 
     const correoNormalizado = correo.trim().toLowerCase();
 
+    // Buscar el usuario real en MySQL.
     const [resultados] = await pool.execute(
       `SELECT
-          id_usuario,
-          nombre,
-          correo,
-          contrasena_hash,
-          rol,
-          estado
+         id_usuario,
+         nombre,
+         correo,
+         contrasena_hash,
+         rol,
+         estado,
+         foto_perfil,
+         telefono,
+         ciudad
        FROM usuarios
        WHERE correo = ?
        LIMIT 1`,
@@ -121,7 +154,7 @@ exports.iniciarSesion = async (req, res) => {
         id: usuario.id_usuario,
         rol: usuario.rol,
       },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       {
         expiresIn: "2h",
       }
@@ -135,6 +168,9 @@ exports.iniciarSesion = async (req, res) => {
         nombre: usuario.nombre,
         correo: usuario.correo,
         rol: usuario.rol,
+        fotoPerfil: usuario.foto_perfil,
+        telefono: usuario.telefono,
+        ciudad: usuario.ciudad,
       },
     });
   } catch (error) {
@@ -142,6 +178,10 @@ exports.iniciarSesion = async (req, res) => {
 
     return res.status(500).json({
       mensaje: "Ocurrió un error al iniciar sesión.",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined,
     });
   }
 };

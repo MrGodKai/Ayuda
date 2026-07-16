@@ -4,6 +4,9 @@ COLLATE utf8mb4_unicode_ci;
 
 USE istream;
 
+DROP TABLE IF EXISTS canciones;
+DROP TABLE IF EXISTS usuarios;
+
 CREATE TABLE usuarios (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,

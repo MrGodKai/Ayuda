@@ -1,16 +1,12 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const {
-  buscarUsuarioPorCorreo,
-  agregarUsuario,
-} = require("../data/usuarios.mock");
+const pool = require("../config/db");
 
-const JWT_SECRET = process.env.JWT_SECRET || "istream-local-dev-secret";
+const JWT_SECRET =
+  process.env.JWT_SECRET || "istream-local-dev-secret";
 
 /**
- * Registro temporal.
- * Lo utilizaremos solamente para crear un usuario de prueba.
- * Hoy no construiremos todavía la pantalla de registro.
+ * Registra un usuario en MySQL.
  */
 exports.registrar = async (req, res) => {
   try {
@@ -18,37 +14,67 @@ exports.registrar = async (req, res) => {
 
     if (!nombre || !correo || !contrasena) {
       return res.status(400).json({
-        mensaje: "Nombre, correo y contraseña son obligatorios.",
+        mensaje:
+          "Nombre, correo y contraseña son obligatorios.",
       });
     }
 
     if (contrasena.length < 8) {
       return res.status(400).json({
-        mensaje: "La contraseña debe tener al menos 8 caracteres.",
+        mensaje:
+          "La contraseña debe tener al menos 8 caracteres.",
       });
     }
 
+    const nombreNormalizado = nombre.trim();
     const correoNormalizado = correo.trim().toLowerCase();
 
-    if (buscarUsuarioPorCorreo(correoNormalizado)) {
+    // Buscar si el correo ya existe en MySQL.
+    const [usuariosExistentes] = await pool.execute(
+      `SELECT id_usuario
+       FROM usuarios
+       WHERE correo = ?
+       LIMIT 1`,
+      [correoNormalizado]
+    );
+
+    if (usuariosExistentes.length > 0) {
       return res.status(409).json({
         mensaje: "Ya existe un usuario con ese correo.",
       });
     }
 
-    const contrasenaHash = await bcrypt.hash(contrasena, 12);
-    const usuarioCreado = agregarUsuario({
-      nombre,
-      correo: correoNormalizado,
-      contrasenaHash,
-    });
+    // Proteger la contraseña.
+    const contrasenaHash = await bcrypt.hash(
+      contrasena,
+      12
+    );
+
+    // Insertar el usuario en MySQL.
+    const [resultado] = await pool.execute(
+      `INSERT INTO usuarios
+       (
+         nombre,
+         correo,
+         contrasena_hash,
+         rol,
+         estado
+       )
+       VALUES (?, ?, ?, 'usuario', TRUE)`,
+      [
+        nombreNormalizado,
+        correoNormalizado,
+        contrasenaHash,
+      ]
+    );
 
     return res.status(201).json({
       mensaje: "Usuario registrado correctamente.",
       usuario: {
-        id: usuarioCreado.id_usuario,
-        nombre: usuarioCreado.nombre,
-        correo: usuarioCreado.correo,
+        id: resultado.insertId,
+        nombre: nombreNormalizado,
+        correo: correoNormalizado,
+        rol: "usuario",
       },
     });
   } catch (error) {
@@ -56,12 +82,16 @@ exports.registrar = async (req, res) => {
 
     return res.status(500).json({
       mensaje: "Ocurrió un error al registrar el usuario.",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined,
     });
   }
 };
 
 /**
- * Inicio de sesión.
+ * Inicia sesión consultando MySQL.
  */
 exports.iniciarSesion = async (req, res) => {
   try {
@@ -69,18 +99,38 @@ exports.iniciarSesion = async (req, res) => {
 
     if (!correo || !contrasena) {
       return res.status(400).json({
-        mensaje: "Correo y contraseña son obligatorios.",
+        mensaje:
+          "Correo y contraseña son obligatorios.",
       });
     }
 
     const correoNormalizado = correo.trim().toLowerCase();
-    const usuario = buscarUsuarioPorCorreo(correoNormalizado);
 
-    if (!usuario) {
+    // Buscar el usuario real en MySQL.
+    const [resultados] = await pool.execute(
+      `SELECT
+         id_usuario,
+         nombre,
+         correo,
+         contrasena_hash,
+         rol,
+         estado,
+         foto_perfil,
+         telefono,
+         ciudad
+       FROM usuarios
+       WHERE correo = ?
+       LIMIT 1`,
+      [correoNormalizado]
+    );
+
+    if (resultados.length === 0) {
       return res.status(401).json({
         mensaje: "Correo o contraseña incorrectos.",
       });
     }
+
+    const usuario = resultados[0];
 
     if (!usuario.estado) {
       return res.status(403).json({
@@ -128,6 +178,10 @@ exports.iniciarSesion = async (req, res) => {
 
     return res.status(500).json({
       mensaje: "Ocurrió un error al iniciar sesión.",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined,
     });
   }
 };

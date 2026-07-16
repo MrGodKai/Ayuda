@@ -3,7 +3,6 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const pool = require("./src/config/db");
 const authRoutes = require("./src/routes/auth.routes");
 
 const app = express();
@@ -17,18 +16,10 @@ app.use(
 
 app.use(express.json());
 
-app.get("/api/health", async (req, res) => {
-  try {
-    await pool.query("SELECT 1");
-
-    res.status(200).json({
-      mensaje: "Backend y base de datos funcionando correctamente.",
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: "No se pudo conectar con MySQL.",
-    });
-  }
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    mensaje: "Backend funcionando correctamente con datos locales.",
+  });
 });
 
 app.use("/api/auth", authRoutes);

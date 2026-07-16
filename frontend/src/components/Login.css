@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: 1.1fr 1fr;
   background: #0d0d12;
-  color: white;
+  color: rgb(255, 255, 255);
 }
 
 .login-decoration {
@@ -14,16 +14,8 @@
   padding: 42px 60px 80px;
   overflow: hidden;
   background:
-    radial-gradient(
-      circle at 15% 20%,
-      rgba(133, 66, 255, 0.45),
-      transparent 38%
-    ),
-    radial-gradient(
-      circle at 80% 75%,
-      rgba(32, 210, 155, 0.2),
-      transparent 32%
-    ),
+    radial-gradient(circle at 15% 20%, rgba(133, 66, 255, 0.45), transparent 38%),
+    radial-gradient(circle at 80% 75%, rgba(32, 210, 155, 0.2), transparent 32%),
     linear-gradient(145deg, #151020, #08080d);
 }
 
@@ -127,7 +119,7 @@
   border-radius: 11px;
   outline: none;
   background: #17171e;
-  color: white;
+  color: rgb(255, 255, 255);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -156,7 +148,7 @@
   border: none;
   border-radius: 11px;
   background: linear-gradient(90deg, #8147ff, #a25cff);
-  color: white;
+  color: rgb(252, 251, 251);
   font-weight: 800;
   cursor: pointer;
   transition: transform 0.2s, opacity 0.2s;
@@ -186,6 +178,16 @@
   cursor: pointer;
 }
 
+.success-message {
+  margin: 0 0 18px;
+  padding: 12px;
+  border: 1px solid rgba(61, 220, 151, 0.4);
+  border-radius: 9px;
+  background: rgba(61, 220, 151, 0.1);
+  color: #65e6ac;
+  font-size: 14px;
+}
+
 @media (max-width: 850px) {
   .login-page {
     grid-template-columns: 1fr;
@@ -203,14 +205,4 @@
     min-height: 100vh;
     padding: 25px;
   }
-
-  .success-message {
-  margin: 0 0 18px;
-  padding: 12px;
-  border: 1px solid rgba(61, 220, 151, 0.4);
-  border-radius: 9px;
-  background: rgba(61, 220, 151, 0.1);
-  color: #65e6ac;
-  font-size: 14px;
-}
 }

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import "./Login.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 function Login({ onLogin }) {
   const [modo, setModo] = useState("login");
 
@@ -44,9 +46,7 @@ function Login({ onLogin }) {
 
   const validarFormulario = () => {
     if (!formulario.correo.trim() || !formulario.contrasena) {
-      setMensajeError(
-        "Debe completar el correo y la contraseña."
-      );
+      setMensajeError("Debe completar el correo y la contraseña.");
       return false;
     }
 
@@ -57,23 +57,16 @@ function Login({ onLogin }) {
       }
 
       if (formulario.nombre.trim().length < 2) {
-        setMensajeError(
-          "El nombre debe contener al menos 2 caracteres."
-        );
+        setMensajeError("El nombre debe contener al menos 2 caracteres.");
         return false;
       }
 
       if (formulario.contrasena.length < 8) {
-        setMensajeError(
-          "La contraseña debe contener al menos 8 caracteres."
-        );
+        setMensajeError("La contraseña debe contener al menos 8 caracteres.");
         return false;
       }
 
-      if (
-        formulario.contrasena !==
-        formulario.confirmarContrasena
-      ) {
+      if (formulario.contrasena !== formulario.confirmarContrasena) {
         setMensajeError("Las contraseñas no coinciden.");
         return false;
       }
@@ -95,10 +88,7 @@ function Login({ onLogin }) {
     try {
       setCargando(true);
 
-      const endpoint = esRegistro
-        ? "/auth/register"
-        : "/auth/login";
-
+      const endpoint = esRegistro ? "/auth/register" : "/auth/login";
       const cuerpoSolicitud = esRegistro
         ? {
             nombre: formulario.nombre.trim(),
@@ -110,49 +100,34 @@ function Login({ onLogin }) {
             contrasena: formulario.contrasena,
           };
 
-      const respuesta = await fetch(
-        `${import.meta.env.VITE_API_URL}${endpoint}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(cuerpoSolicitud),
-        }
-      );
+      const respuesta = await fetch(`${API_URL}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(cuerpoSolicitud),
+      });
 
       const datos = await respuesta.json();
 
       if (!respuesta.ok) {
-        throw new Error(
-          datos.mensaje || "No se pudo completar la solicitud."
-        );
+        throw new Error(datos.mensaje || "No se pudo completar la solicitud.");
       }
 
       if (esRegistro) {
-        setMensajeExito(
-          "Usuario registrado correctamente. Ya puede iniciar sesión."
-        );
-
+        setMensajeExito("Usuario registrado correctamente. Ya puede iniciar sesión.");
         setModo("login");
-
         setFormulario((formularioAnterior) => ({
           nombre: "",
           correo: formularioAnterior.correo,
           contrasena: "",
           confirmarContrasena: "",
         }));
-
         return;
       }
 
       sessionStorage.setItem("token", datos.token);
-
-      sessionStorage.setItem(
-        "usuario",
-        JSON.stringify(datos.usuario)
-      );
-
+      sessionStorage.setItem("usuario", JSON.stringify(datos.usuario));
       onLogin(datos.usuario);
     } catch (error) {
       setMensajeError(error.message);
@@ -170,9 +145,7 @@ function Login({ onLogin }) {
         </div>
 
         <div className="decoration-content">
-          <p className="small-title">
-            TU MÚSICA, TU COMUNIDAD
-          </p>
+          <p className="small-title">TU MÚSICA, TU COMUNIDAD</p>
 
           <h1>
             Escucha, comparte
@@ -181,26 +154,18 @@ function Login({ onLogin }) {
           </h1>
 
           <p>
-            Accede a tus canciones, playlists, favoritos e
-            interacciones musicales.
+            Accede a tus canciones, playlists, favoritos e interacciones musicales.
           </p>
         </div>
       </section>
 
       <section className="login-container">
-        <form
-          className="login-card"
-          onSubmit={enviarFormulario}
-        >
+        <form className="login-card" onSubmit={enviarFormulario}>
           <div className="mobile-brand">
             <span>♫</span> iStream
           </div>
 
-          <h2>
-            {esRegistro
-              ? "Crear una cuenta"
-              : "Iniciar sesión"}
-          </h2>
+          <h2>{esRegistro ? "Crear una cuenta" : "Iniciar sesión"}</h2>
 
           <p className="subtitle">
             {esRegistro
@@ -211,7 +176,6 @@ function Login({ onLogin }) {
           {esRegistro && (
             <div className="form-group">
               <label htmlFor="nombre">Nombre completo</label>
-
               <input
                 id="nombre"
                 name="nombre"
@@ -226,10 +190,7 @@ function Login({ onLogin }) {
           )}
 
           <div className="form-group">
-            <label htmlFor="correo">
-              Correo electrónico
-            </label>
-
+            <label htmlFor="correo">Correo electrónico</label>
             <input
               id="correo"
               name="correo"
@@ -243,36 +204,22 @@ function Login({ onLogin }) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="contrasena">
-              Contraseña
-            </label>
-
+            <label htmlFor="contrasena">Contraseña</label>
             <input
               id="contrasena"
               name="contrasena"
               type="password"
-              placeholder={
-                esRegistro
-                  ? "Mínimo 8 caracteres"
-                  : "Ingrese su contraseña"
-              }
+              placeholder={esRegistro ? "Mínimo 8 caracteres" : "Ingrese su contraseña"}
               value={formulario.contrasena}
               onChange={actualizarCampo}
-              autoComplete={
-                esRegistro
-                  ? "new-password"
-                  : "current-password"
-              }
+              autoComplete={esRegistro ? "new-password" : "current-password"}
               required
             />
           </div>
 
           {esRegistro && (
             <div className="form-group">
-              <label htmlFor="confirmarContrasena">
-                Confirmar contraseña
-              </label>
-
+              <label htmlFor="confirmarContrasena">Confirmar contraseña</label>
               <input
                 id="confirmarContrasena"
                 name="confirmarContrasena"
@@ -286,23 +233,10 @@ function Login({ onLogin }) {
             </div>
           )}
 
-          {mensajeError && (
-            <p className="error-message">
-              {mensajeError}
-            </p>
-          )}
+          {mensajeError && <p className="error-message">{mensajeError}</p>}
+          {mensajeExito && <p className="success-message">{mensajeExito}</p>}
 
-          {mensajeExito && (
-            <p className="success-message">
-              {mensajeExito}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            className="login-button"
-            disabled={cargando}
-          >
+          <button type="submit" className="login-button" disabled={cargando}>
             {cargando
               ? esRegistro
                 ? "Registrando..."
@@ -313,17 +247,9 @@ function Login({ onLogin }) {
           </button>
 
           <p className="register-text">
-            {esRegistro
-              ? "¿Ya tienes una cuenta?"
-              : "¿Todavía no tienes una cuenta?"}{" "}
-            <button
-              type="button"
-              className="link-button"
-              onClick={cambiarModo}
-            >
-              {esRegistro
-                ? "Iniciar sesión"
-                : "Regístrate"}
+            {esRegistro ? "¿Ya tienes una cuenta?" : "¿Todavía no tienes una cuenta?"}{" "}
+            <button type="button" className="link-button" onClick={cambiarModo}>
+              {esRegistro ? "Iniciar sesión" : "Regístrate"}
             </button>
           </p>
         </form>

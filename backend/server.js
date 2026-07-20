@@ -5,6 +5,8 @@ const cors = require("cors");
 
 const pool = require("./src/config/db");
 const authRoutes = require("./src/routes/auth.routes");
+const busquedaRoutes = require("./src/routes/busqueda.routes");
+const artistasRoutes = require("./src/routes/artistas.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,6 +26,8 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/busqueda", busquedaRoutes);
+app.use("/api/artistas", artistasRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

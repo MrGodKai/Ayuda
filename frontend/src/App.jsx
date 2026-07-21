@@ -45,6 +45,7 @@ function obtenerUsuarioGuardado() {
 function App() {
   const [usuario, setUsuario] = useState(obtenerUsuarioGuardado);
   const [vistaActiva, setVistaActiva] = useState("inicio");
+  const [miniPlayerVisible, setMiniPlayerVisible] = useState(false);
   const [perfilForm, setPerfilForm] = useState({
     nombre: "",
     correo: "",
@@ -233,7 +234,25 @@ function App() {
   };
 
   const cambiarVista = (nuevaVista) => {
+    if (vistaActiva === "player" && nuevaVista !== "player") {
+      setMiniPlayerVisible(true);
+    }
+
+    if (nuevaVista === "player") {
+      setMiniPlayerVisible(false);
+    }
+
     setVistaActiva(nuevaVista);
+  };
+
+  const abrirPlayer = () => {
+    setMiniPlayerVisible(false);
+    setVistaActiva("player");
+  };
+
+  const minimizarPlayer = () => {
+    setMiniPlayerVisible(true);
+    setVistaActiva("inicio");
   };
 
   useEffect(() => {
@@ -298,6 +317,7 @@ function App() {
     setReproduciendo(false);
     setProgreso(0);
     setBusqueda("");
+    abrirPlayer();
   };
 
   const abrirPerfilArtista = async (artistaNombre) => {
@@ -410,7 +430,6 @@ function App() {
       seleccionarCancion(miPlaylist[index]);
       setReproduciendo(false);
       setBusqueda("");
-      cambiarVista("player");
     }
   };
 
@@ -446,6 +465,7 @@ function App() {
     setUsuario(null);
     setMensajePerfil("");
     setErrorPerfil("");
+    setMiniPlayerVisible(false);
   };
 
   if (!usuario) {
@@ -654,7 +674,7 @@ function App() {
           </section>
         ) : vistaActiva === "player" ? (
           <section className="player-screen">
-            <div className="backlink" onClick={() => cambiarVista("inicio")}>← Volver a Inicio | Reproduciendo desde: Playlist</div>
+            <div className="backlink" onClick={minimizarPlayer}>← Volver al inicio</div>
             <div className="player-cover"></div>
             <div className="player-title">{cancionActual.titulo}</div>
             <div className="player-artist">{cancionActual.artista} • <span>Agregar a playlist</span></div>
@@ -876,29 +896,58 @@ function App() {
                 ))}
               </div>
             </div>
+          </>
+        )}
 
+        {miniPlayerVisible && vistaActiva !== "player" && (
+          <>
             <div className="mini-player">
-              <div className="mini-player-cover"></div>
-              <div className="mini-player-info">
-                <strong>{cancionActual.titulo}</strong>
-                <span>{cancionActual.artista} • {cancionActual.album}</span>
+              <div className="mini-player-main" onClick={abrirPlayer}>
+                <div className="mini-player-cover"></div>
+                <div className="mini-player-info">
+                  <strong>{cancionActual.titulo}</strong>
+                  <span>{cancionActual.artista}</span>
+                </div>
               </div>
+
               <div className="mini-player-controls">
-                <button type="button" className="player-button" onClick={alternarReproduccion}>
-                  {reproduciendo ? "Pause" : "Play"}
+                <span className="mini-separator" aria-hidden="true">|</span>
+                <button
+                  type="button"
+                  className="mini-icon-button"
+                  onClick={cancionAnterior}
+                  disabled={indiceCancionActual === 0}
+                  aria-label="Canción anterior"
+                >
+                  ◀◀
                 </button>
+                <button type="button" className="mini-icon-button" onClick={alternarReproduccion} aria-label="Reproducir o pausar">
+                  {reproduciendo ? "❚❚" : "▶"}
+                </button>
+                <button
+                  type="button"
+                  className="mini-icon-button"
+                  onClick={cancionSiguiente}
+                  disabled={indiceCancionActual >= miPlaylist.length - 1}
+                  aria-label="Canción siguiente"
+                >
+                  ▶▶
+                </button>
+                <span className="mini-separator" aria-hidden="true">|</span>
+
+                <label className="mini-player-volume" htmlFor="mini-player-volume">
+                  VOL
+                </label>
                 <input
-                  className="player-progress"
+                  id="mini-player-volume"
+                  className="volume-slider mini-volume-slider"
                   type="range"
                   min="0"
-                  max={duracion || 100}
-                  value={progreso}
-                  onChange={cambiarTiempo}
-                  aria-label="Progreso de reproducción"
+                  max="100"
+                  value={volumen}
+                  onChange={cambiarVolumen}
+                  aria-label="Volumen"
                 />
-                <span className="player-time">
-                  {Math.floor(progreso / 60)}:{String(Math.floor(progreso % 60)).padStart(2, "0")}
-                </span>
               </div>
             </div>
             {mensajeReproductor && <p className="player-error">{mensajeReproductor}</p>}

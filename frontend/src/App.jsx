@@ -28,16 +28,25 @@ const artistasMock = ["1", "2", "3", "4", "5"];
 const artistasCatalogo = [];
 
 function obtenerUsuarioGuardado() {
-  const usuarioGuardado = sessionStorage.getItem("usuario");
+  const token =
+    sessionStorage.getItem("token");
 
-  if (!usuarioGuardado) {
+  const usuarioGuardado =
+    sessionStorage.getItem("usuario");
+
+  if (!token || !usuarioGuardado) {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("usuario");
+
     return null;
   }
 
   try {
     return JSON.parse(usuarioGuardado);
   } catch {
+    sessionStorage.removeItem("token");
     sessionStorage.removeItem("usuario");
+
     return null;
   }
 }
@@ -126,8 +135,12 @@ function App() {
     const token = sessionStorage.getItem("token");
 
     if (!token || !usuario) {
-      return;
-    }
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("usuario");
+  setUsuario(null);
+
+  return;
+}
 
     try {
       setCargandoPerfil(true);
@@ -140,6 +153,17 @@ function App() {
       });
 
       const datos = await respuesta.json();
+
+      if (
+  respuesta.status === 401 ||
+  respuesta.status === 403
+) {
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("usuario");
+  setUsuario(null);
+
+  return;
+}
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo cargar el perfil.");
@@ -204,10 +228,12 @@ function App() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          nombre: perfilForm.nombre.trim(),
-          correo: perfilForm.correo.trim(),
-          ciudad: perfilForm.ciudad.trim(),
-        }),
+  nombre: perfilForm.nombre.trim(),
+  correo: perfilForm.correo.trim(),
+  ciudad: perfilForm.ciudad.trim(),
+  fotoPerfil: usuario?.fotoPerfil ?? null,
+  telefono: usuario?.telefono ?? null,
+}),
       });
 
       const datos = await respuesta.json();

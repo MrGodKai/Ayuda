@@ -2,6 +2,8 @@ import { useState } from "react";
 import "./Login.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const CONTRASENA_SEGURA_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,72}$/;
 
 function Login({ onLogin }) {
   const [modo, setModo] = useState("login");
@@ -61,10 +63,17 @@ function Login({ onLogin }) {
         return false;
       }
 
-      if (formulario.contrasena.length < 8) {
-        setMensajeError("La contraseña debe contener al menos 8 caracteres.");
-        return false;
-      }
+      if (
+  !CONTRASENA_SEGURA_REGEX.test(
+    formulario.contrasena
+  )
+) {
+  setMensajeError(
+    "La contraseña debe incluir mayúscula, minúscula, número y símbolo."
+  );
+
+  return false;
+}
 
       if (formulario.contrasena !== formulario.confirmarContrasena) {
         setMensajeError("Las contraseñas no coinciden.");
@@ -209,7 +218,7 @@ function Login({ onLogin }) {
               id="contrasena"
               name="contrasena"
               type="password"
-              placeholder={esRegistro ? "Mínimo 8 caracteres" : "Ingrese su contraseña"}
+              placeholder={esRegistro? "Mayúscula, minúscula, número y símbolo": "Ingrese su contraseña"}
               value={formulario.contrasena}
               onChange={actualizarCampo}
               autoComplete={esRegistro ? "new-password" : "current-password"}

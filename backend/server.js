@@ -15,6 +15,14 @@ const usuariosRoutes = require(
   "./src/routes/usuarios.routes"
 );
 
+const artistasRoutes = require(
+  "./src/routes/artistas.routes"
+);
+
+const busquedaRoutes = require(
+  "./src/routes/busqueda.routes"
+);
+
 const app = express();
 
 const PORT = Number(
@@ -66,6 +74,19 @@ app.use(
   usuariosRoutes
 );
 
+app.use(
+  "/api/artistas",
+  artistasRoutes
+);
+
+app.use(
+  "/api/busqueda",
+  busquedaRoutes
+);
+
+/*
+ * Debe estar después de todas las rutas.
+ */
 app.use((req, res) => {
   res.status(404).json({
     mensaje:

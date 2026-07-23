@@ -87,6 +87,9 @@ function App() {
     mensaje: "",
   });
   const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
+  const [cancionesPopulares, setCancionesPopulares] = useState([]);
+  const [cargandoPopulares, setCargandoPopulares] = useState(false);
+  const [errorPopulares, setErrorPopulares] = useState("");
   const [cargandoArtistas, setCargandoArtistas] = useState(false);
   const [artistasCatalogo, setArtistasCatalogo] = useState([]);
   const [artistaSeleccionado, setArtistaSeleccionado] = useState(null);
@@ -381,6 +384,77 @@ function App() {
       Authorization: `Bearer ${token}`,
     };
   };
+
+  const cargarCancionesPopulares = async () => {
+  const headers = obtenerHeadersAutenticados();
+
+  if (!headers) {
+    setCancionesPopulares([]);
+    setErrorPopulares("");
+    return;
+  }
+
+  try {
+    setCargandoPopulares(true);
+    setErrorPopulares("");
+
+    const respuesta = await fetch(
+      `${API_URL}/canciones/populares`,
+      {
+        method: "GET",
+        headers,
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    /*
+     * Si la sesión expiró o la cuenta ya no
+     * tiene acceso, se cierra la sesión local.
+     */
+    if (
+      respuesta.status === 401 ||
+      respuesta.status === 403
+    ) {
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("usuario");
+      setUsuario(null);
+      return;
+    }
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos.mensaje ||
+          "No se pudieron cargar las canciones populares."
+      );
+    }
+
+    setCancionesPopulares(
+      Array.isArray(datos.canciones)
+        ? datos.canciones
+        : []
+    );
+  } catch (error) {
+    setCancionesPopulares([]);
+
+    setErrorPopulares(
+      error.message ||
+        "No se pudieron cargar las canciones populares."
+    );
+  } finally {
+    setCargandoPopulares(false);
+  }
+};
+
+  useEffect(() => {
+    if (!usuario?.id) {
+    setCancionesPopulares([]);
+    setErrorPopulares("");
+    return;
+  }
+
+    cargarCancionesPopulares();
+  }, [usuario?.id]);
 
   const cargarHistorial = async () => {
     const headers = obtenerHeadersAutenticados();
@@ -1186,6 +1260,9 @@ function App() {
     setErrorFavoritos("");
     setPlaylistsUsuario([]);
     setPlaylistSeleccionadaId(null);
+    setCancionesPopulares([]);
+    setErrorPopulares("");
+    setCargandoPopulares(false);
   };
 
   if (!usuario) {
@@ -1938,6 +2015,87 @@ function App() {
           </section>
         ) : (
           <>
+          <div className="section-block">
+  <div className="section-title-row">
+    <p className="section-label">
+      Populares del momento
+    </p>
+
+    <button
+      type="button"
+      className="popular-refresh-button"
+      onClick={cargarCancionesPopulares}
+      disabled={cargandoPopulares}
+    >
+      {cargandoPopulares
+        ? "Actualizando..."
+        : "Cambiar canciones"}
+    </button>
+  </div>
+
+  {cargandoPopulares && (
+    <p className="popular-status">
+      Cargando canciones...
+    </p>
+  )}
+
+  {!cargandoPopulares && errorPopulares && (
+    <p className="popular-status popular-status--error">
+      {errorPopulares}
+    </p>
+  )}
+
+  {!cargandoPopulares &&
+    !errorPopulares &&
+    cancionesPopulares.length === 0 && (
+      <p className="popular-status">
+        No hay canciones disponibles en este momento.
+      </p>
+    )}
+
+  {!cargandoPopulares &&
+    cancionesPopulares.length > 0 && (
+      <div className="tile-grid">
+        {cancionesPopulares.map((cancion) => (
+          <button
+            type="button"
+            className="tile-card popular-song-card"
+            key={cancion.id}
+            onClick={() =>
+              reproducirCancionDirecta(cancion)
+            }
+          >
+            <div
+              className={`tile-cover ${
+                cancion.portada
+                  ? "tile-cover--image"
+                  : ""
+              }`}
+              style={
+                cancion.portada
+                  ? {
+                      backgroundImage: `url("${cancion.portada}")`,
+                    }
+                  : undefined
+              }
+            />
+
+            <div className="tile-title">
+              {cancion.titulo}
+            </div>
+
+            <div className="tile-sub">
+              {cancion.artista}
+            </div>
+
+            <div className="tile-sub">
+              {cancion.album || "Sin álbum"}
+            </div>
+          </button>
+        ))}
+      </div>
+    )}
+</div>
             <div className="section-block">
               <p className="section-label">Continuar escuchando</p>
               <div className="tile-grid">

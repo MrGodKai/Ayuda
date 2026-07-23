@@ -45,6 +45,12 @@ const FRONTEND_URL =
   process.env.FRONTEND_URL ||
   "http://localhost:5173";
 
+const ALLOWED_ORIGINS = new Set([
+  FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:5174",
+]);
+
 /*
  * Oculta el encabezado que indica
  * que el servidor utiliza Express.
@@ -53,7 +59,16 @@ app.disable("x-powered-by");
 
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Permite peticiones sin origin (Postman/cURL) y los puertos locales de Vite.
+      if (!origin || ALLOWED_ORIGINS.has(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error("Origen no permitido por CORS.")
+      );
+    },
   })
 );
 

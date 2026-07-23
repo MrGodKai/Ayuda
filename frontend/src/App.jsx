@@ -3,6 +3,7 @@ import "./App.css";
 import Login from "./components/Login";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const INTERVALO_ACTUALIZACION_POPULARES_MS = 60 * 1000;
 const AUDIO_SAMPLES = [
   "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
   "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
@@ -10,9 +11,9 @@ const AUDIO_SAMPLES = [
 ];
 
 const playlistsMock = [
-  { titulo: "Por definir", descripcion: "Por definir", color: "#fdfdfd" },
-  { titulo: "Por definir", descripcion: "Por definir", color: "#f5f5f5" },
-  { titulo: "Por definir", descripcion: "Por definir", color: "#ffffff" },
+  { id: "mock-1", titulo: "Por definir", descripcion: "Por definir", color: "#fdfdfd" },
+  { id: "mock-2", titulo: "Por definir", descripcion: "Por definir", color: "#f5f5f5" },
+  { id: "mock-3", titulo: "Por definir", descripcion: "Por definir", color: "#ffffff" },
 ];
 
 const playlistSongsMock = [
@@ -22,6 +23,12 @@ const playlistSongsMock = [
   { id: 4, titulo: "Canción Cuatro", artista: "Artista D", album: "Álbum D", duracion: "3:35" },
   { id: 5, titulo: "Canción Cinco", artista: "Artista E", album: "Álbum E", duracion: "3:59" },
 ];
+
+const FOTO_ARTISTA_BLANCA =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-hidden="true"><rect width="120" height="120" rx="24" fill="#ffffff"/><circle cx="60" cy="50" r="18" fill="#f2f2f2" stroke="#d9d9d9" stroke-width="3"/><path d="M30 96c6-18 21-26 30-26s24 8 30 26" fill="#f2f2f2" stroke="#d9d9d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  );
 
 const artistasMock = ["1", "2", "3", "4", "5"];
 
@@ -63,6 +70,10 @@ function formatearFechaHistorial(fecha) {
   }
 
   return fechaNormalizada.toLocaleString();
+}
+
+function obtenerFotoArtista() {
+  return FOTO_ARTISTA_BLANCA;
 }
 
 function App() {
@@ -109,6 +120,8 @@ function App() {
   const [playlistSeleccionadaId, setPlaylistSeleccionadaId] = useState(null);
   const [menuPlaylistAbierto, setMenuPlaylistAbierto] = useState(false);
   const [menuAgregarPlaylistCancionId, setMenuAgregarPlaylistCancionId] = useState(null);
+  const [crearPlaylistAbierto, setCrearPlaylistAbierto] = useState(false);
+  const [nombreNuevaPlaylist, setNombreNuevaPlaylist] = useState("");
   const [mensajeReproductor, setMensajeReproductor] = useState("");
   const [tipoMensajeReproductor, setTipoMensajeReproductor] = useState("error");
   const [historialReproducciones, setHistorialReproducciones] = useState([]);
@@ -122,6 +135,11 @@ function App() {
     canciones: [],
     artistas: [],
   });
+
+  const fotoPerfilUsuario =
+    typeof usuario?.fotoPerfil === "string"
+      ? usuario.fotoPerfil.trim()
+      : "";
   const searchAreaRef = useRef(null);
   const audioRef = useRef(null);
   const claveRecientesBusqueda = useMemo(
@@ -214,11 +232,13 @@ function App() {
     );
 
     const reproduccionesUltimos7Dias = historialReproducciones.filter((registro) => {
-      if (!registro?.fecha_reproduccion) {
+      const fechaRegistro = registro?.reproducidoEn || registro?.fecha_reproduccion;
+
+      if (!fechaRegistro) {
         return false;
       }
 
-      const fecha = new Date(registro.fecha_reproduccion);
+      const fecha = new Date(fechaRegistro);
 
       if (Number.isNaN(fecha.getTime())) {
         return false;
@@ -448,12 +468,21 @@ function App() {
 
   useEffect(() => {
     if (!usuario?.id) {
-    setCancionesPopulares([]);
-    setErrorPopulares("");
-    return;
-  }
+      setCancionesPopulares([]);
+      setErrorPopulares("");
+      setCargandoPopulares(false);
+      return;
+    }
 
     cargarCancionesPopulares();
+
+    const intervalo = setInterval(() => {
+      cargarCancionesPopulares();
+    }, INTERVALO_ACTUALIZACION_POPULARES_MS);
+
+    return () => {
+      clearInterval(intervalo);
+    };
   }, [usuario?.id]);
 
   const cargarHistorial = async () => {
@@ -1145,16 +1174,36 @@ function App() {
     agregarAPlaylist(cancion, playlistIdDestino);
   };
 
-  const crearPlaylist = () => {
+  const abrirFormularioPlaylist = () => {
+    setMenuPlaylistAbierto(false);
+    setCrearPlaylistAbierto(true);
+  };
+
+  const cancelarCreacionPlaylist = () => {
+    setCrearPlaylistAbierto(false);
+    setNombreNuevaPlaylist("");
+  };
+
+  const crearPlaylist = (evento) => {
+    evento.preventDefault();
+
+    const nombreLimpio = nombreNuevaPlaylist.trim();
+
+    if (!nombreLimpio) {
+      mostrarMensajeReproductor("Debes escribir un nombre para crear la playlist.", "error");
+      return;
+    }
+
     const nuevaPlaylist = {
       id: `playlist-${Date.now()}`,
-      nombre: `Mi playlist ${playlistsUsuario.length + 1}`,
+      nombre: nombreLimpio,
       canciones: [],
     };
 
     setPlaylistsUsuario((anterior) => [...anterior, nuevaPlaylist]);
     setPlaylistSeleccionadaId(nuevaPlaylist.id);
-    setMenuPlaylistAbierto(false);
+    setCrearPlaylistAbierto(false);
+    setNombreNuevaPlaylist("");
   };
 
   const eliminarPlaylistCompleta = () => {
@@ -1340,7 +1389,17 @@ function App() {
                 }
               }}
             />
-            <button type="button" className="top-avatar">{usuario.nombre?.charAt(0).toUpperCase() || "U"}</button>
+            <button
+              type="button"
+              className={`top-avatar ${fotoPerfilUsuario ? "top-avatar--photo" : ""}`}
+              aria-label="Perfil"
+            >
+              {fotoPerfilUsuario ? (
+                <img src={fotoPerfilUsuario} alt="Foto de perfil" />
+              ) : (
+                <span aria-hidden="true">U</span>
+              )}
+            </button>
           </header>
 
           {busquedaAbierta && (
@@ -1559,7 +1618,7 @@ function App() {
                 <button
                   type="button"
                   className="secondary-link-button table-action-button"
-                  onClick={crearPlaylist}
+                  onClick={abrirFormularioPlaylist}
                   aria-label="Crear playlist"
                 >
                   +
@@ -1588,13 +1647,32 @@ function App() {
             </div>
 
             <div className="library-layout">
-              <article className="library-main-panel">
-                {!playlistActiva ? (
-                  <p className="search-empty">No hay playlist creada. Presiona + para crear una.</p>
-                ) : miPlaylist.length === 0 ? (
-                  <p className="search-empty">Tu playlist está vacía. Busca canciones y agrégalas.</p>
-                ) : (
-                  <table className="playlist-table library-table">
+                {crearPlaylistAbierto && (
+                  <form className="playlist-create-inline" onSubmit={crearPlaylist}>
+                    <input
+                      className="playlist-create-input"
+                      type="text"
+                      value={nombreNuevaPlaylist}
+                      onChange={(evento) => setNombreNuevaPlaylist(evento.target.value)}
+                      placeholder="Nombre de la playlist"
+                      autoFocus
+                    />
+                    <div className="playlist-create-actions">
+                      <button type="submit" className="playlist-create-confirm" disabled={!nombreNuevaPlaylist.trim()}>
+                        Crear
+                      </button>
+                      <button type="button" className="playlist-create-cancel" onClick={cancelarCreacionPlaylist}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                )}
+              {playlistActiva && (
+                <article className="library-main-panel">
+                  {miPlaylist.length === 0 ? (
+                    <p className="search-empty">Tu playlist está vacía. Busca canciones y agrégalas.</p>
+                  ) : (
+                    <table className="playlist-table library-table">
                     <thead>
                       <tr>
                         <th>#</th>
@@ -1634,9 +1712,10 @@ function App() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                )}
-              </article>
+                    </table>
+                  )}
+                </article>
+              )}
 
               <aside className="library-side-panel">
                 <div className="history-header">
@@ -1822,7 +1901,7 @@ function App() {
                   <div className="artist-profile-header">
                     <img
                       className="artist-photo"
-                      src={artistaSeleccionado.foto}
+                      src={obtenerFotoArtista(artistaSeleccionado.foto)}
                       alt={artistaSeleccionado.nombre}
                     />
                     <div>
@@ -1871,7 +1950,7 @@ function App() {
             <div className="artist-list-grid">
               {artistasCatalogo.map((artista) => (
                 <article className="artist-list-card" key={artista.id || artista.nombre}>
-                  <img className="artist-list-photo" src={artista.foto} alt={artista.nombre} />
+                  <img className="artist-list-photo" src={obtenerFotoArtista(artista.foto)} alt={artista.nombre} />
                   <div className="artist-list-body">
                     <strong>{artista.nombre}</strong>
                     <span>{(artista.generos || []).join(" • ")}</span>
@@ -1887,7 +1966,19 @@ function App() {
           <section className="profile-section">
             <article className="profile-card profile-hero-card">
               <div className="profile-head">
-                <div className="preview-avatar profile-avatar-xl">
+                <div
+                  className={`preview-avatar profile-avatar-xl ${
+                    fotoPerfilUsuario
+                      ? "profile-avatar-xl--photo"
+                      : ""
+                  }`}
+                >
+                  {fotoPerfilUsuario && (
+                    <img
+                      src={fotoPerfilUsuario}
+                      alt="Foto de perfil"
+                    />
+                  )}
                   <span>{usuario.nombre?.charAt(0).toUpperCase() || "U"}</span>
                 </div>
                 <div className="profile-identity">
@@ -1895,9 +1986,8 @@ function App() {
                   <h2>{usuario.nombre}</h2>
                   <p>{usuario.correo}</p>
                   <div className="profile-meta-line">
-                    <span>{usuario.ciudad || "Sin ciudad"}</span>
                     <span>{usuario.rol || "Usuario"}</span>
-                    <span>{resumenPerfil.reproduccionesUltimos7Dias} reproducciones esta semana</span>
+                    <span>{resumenPerfil.reproduccionesUltimos7Dias} reproducciones en los ultimos 7 dias</span>
                   </div>
                 </div>
               </div>
@@ -1938,7 +2028,7 @@ function App() {
                         <div>
                           <strong>{registro.cancion?.titulo || "Canción desconocida"}</strong>
                           <p>
-                            {registro.cancion?.artista || "Artista desconocido"} • {formatearFechaHistorial(registro.fecha_reproduccion)}
+                            {registro.cancion?.artista || "Artista desconocido"} • {formatearFechaHistorial(registro.reproducidoEn || registro.fecha_reproduccion)}
                           </p>
                         </div>
                         <div className="favorite-actions">
@@ -1992,16 +2082,6 @@ function App() {
                     />
                   </label>
 
-                  <label className="field full-width">
-                    <span>Ciudad</span>
-                    <input
-                      type="text"
-                      name="ciudad"
-                      value={perfilForm.ciudad}
-                      onChange={actualizarCampo}
-                      placeholder="Tu ciudad"
-                    />
-                  </label>
                 </div>
 
                 {errorPerfil && <p className="form-error">{errorPerfil}</p>}
@@ -2020,17 +2100,6 @@ function App() {
     <p className="section-label">
       Populares del momento
     </p>
-
-    <button
-      type="button"
-      className="popular-refresh-button"
-      onClick={cargarCancionesPopulares}
-      disabled={cargandoPopulares}
-    >
-      {cargandoPopulares
-        ? "Actualizando..."
-        : "Cambiar canciones"}
-    </button>
   </div>
 
   {cargandoPopulares && (
@@ -2100,7 +2169,7 @@ function App() {
               <p className="section-label">Continuar escuchando</p>
               <div className="tile-grid">
                 {playlistsMock.map((playlist) => (
-                  <article className="tile-card" key={playlist.titulo} onClick={() => cambiarVista("player")}>
+                  <article className="tile-card" key={playlist.id} onClick={() => cambiarVista("player")}>
                     <div className="tile-cover" style={{ background: playlist.color }}>
                       ♫
                     </div>

@@ -1,11 +1,8 @@
 const pool = require("../config/db");
 
 /**
- * Obtiene seis canciones activas seleccionadas
- * aleatoriamente desde MySQL.
- *
- * Por el momento se mostrarán aleatoriamente como
- * "Populares del momento".
+ * Obtiene seis canciones activas ordenadas por popularidad
+ * según reproducciones recientes y acumuladas.
  */
 exports.obtenerCancionesPopulares = async (
   req,
@@ -14,18 +11,44 @@ exports.obtenerCancionesPopulares = async (
   try {
     const [canciones] = await pool.execute(
       `SELECT
-         id_cancion,
-         titulo,
-         artista,
-         album,
-         genero,
-         descripcion,
-         duracion_segundos,
-         portada_url,
-         audio_url
-       FROM canciones
-       WHERE estado = TRUE
-       ORDER BY RAND()
+         c.id_cancion,
+         c.titulo,
+         c.artista,
+         c.album,
+         c.genero,
+         c.descripcion,
+         c.duracion_segundos,
+         c.portada_url,
+         c.audio_url,
+         SUM(
+           CASE
+             WHEN h.reproducido_en >= (NOW() - INTERVAL 7 DAY)
+             THEN 1
+             ELSE 0
+           END
+         ) AS reproducciones_7d,
+         COUNT(h.id_historial) AS reproducciones_totales,
+         MAX(h.reproducido_en) AS ultima_reproduccion
+       FROM canciones c
+       LEFT JOIN historial_reproducciones h
+         ON h.id_cancion = c.id_cancion
+       WHERE c.estado = TRUE
+       GROUP BY
+         c.id_cancion,
+         c.titulo,
+         c.artista,
+         c.album,
+         c.genero,
+         c.descripcion,
+         c.duracion_segundos,
+         c.portada_url,
+         c.audio_url,
+         c.actualizado_en
+       ORDER BY
+         reproducciones_7d DESC,
+         reproducciones_totales DESC,
+         ultima_reproduccion DESC,
+         c.actualizado_en DESC
        LIMIT 6`
     );
 

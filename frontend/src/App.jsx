@@ -4,6 +4,8 @@ import Login from "./components/Login";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 const INTERVALO_ACTUALIZACION_POPULARES_MS = 60 * 1000;
+const CONTRASENA_SEGURA_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,72}$/;
 const AUDIO_SAMPLES = [
   "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
   "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
@@ -31,6 +33,7 @@ const FOTO_ARTISTA_BLANCA =
   );
 
 const artistasMock = ["1", "2", "3", "4", "5"];
+const PLAYER_PLAYLIST_MENU_ID = "player-current-song";
 
 const artistasCatalogo = [];
 
@@ -120,10 +123,12 @@ function App() {
   const [playlistSeleccionadaId, setPlaylistSeleccionadaId] = useState(null);
   const [menuPlaylistAbierto, setMenuPlaylistAbierto] = useState(false);
   const [menuAgregarPlaylistCancionId, setMenuAgregarPlaylistCancionId] = useState(null);
+  const [menuAccionesCancionId, setMenuAccionesCancionId] = useState(null);
   const [crearPlaylistAbierto, setCrearPlaylistAbierto] = useState(false);
   const [nombreNuevaPlaylist, setNombreNuevaPlaylist] = useState("");
   const [mensajeReproductor, setMensajeReproductor] = useState("");
   const [tipoMensajeReproductor, setTipoMensajeReproductor] = useState("error");
+  const [mensajeReproductorVisible, setMensajeReproductorVisible] = useState(false);
   const [historialReproducciones, setHistorialReproducciones] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [limpiandoHistorial, setLimpiandoHistorial] = useState(false);
@@ -299,10 +304,11 @@ function App() {
   const mostrarMensajeReproductor = (mensaje, tipo = "error") => {
     setMensajeReproductor(mensaje);
     setTipoMensajeReproductor(tipo);
+    setMensajeReproductorVisible(true);
   };
 
   const limpiarMensajeReproductor = () => {
-    setMensajeReproductor("");
+    setMensajeReproductorVisible(false);
   };
 
   const registrarCancionReciente = (cancion) => {
@@ -344,12 +350,14 @@ function App() {
     }));
   };
 
-  const limpiarRecientesBusqueda = () => {
+  const limpiarRecientesBusqueda = async () => {
     setRecientesBusqueda({ canciones: [], artistas: [] });
 
     if (claveRecientesBusqueda) {
       localStorage.removeItem(claveRecientesBusqueda);
     }
+
+    await limpiarHistorial();
   };
 
   const sincronizarFormulario = (usuarioActual) => {
@@ -765,11 +773,20 @@ function App() {
       return;
     }
 
-    const timeoutId = setTimeout(() => {
-      limpiarMensajeReproductor();
+    setMensajeReproductorVisible(true);
+
+    const timeoutOcultarId = setTimeout(() => {
+      setMensajeReproductorVisible(false);
+    }, 2800);
+
+    const timeoutLimpiarId = setTimeout(() => {
+      setMensajeReproductor("");
     }, 3200);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutOcultarId);
+      clearTimeout(timeoutLimpiarId);
+    };
   }, [mensajeReproductor]);
 
   useEffect(() => {
@@ -788,6 +805,22 @@ function App() {
 
     return () => document.removeEventListener("mousedown", cerrarBusquedaAlSalir);
   }, [busquedaAbierta]);
+
+  useEffect(() => {
+    const cerrarMenuCancionPorFuera = (event) => {
+      if (event.target.closest(".song-actions-menu")) {
+        return;
+      }
+
+      setMenuAccionesCancionId(null);
+    };
+
+    document.addEventListener("mousedown", cerrarMenuCancionPorFuera);
+
+    return () => {
+      document.removeEventListener("mousedown", cerrarMenuCancionPorFuera);
+    };
+  }, []);
 
   const cargarPerfil = async () => {
     const token = sessionStorage.getItem("token");
@@ -916,6 +949,7 @@ function App() {
       setGuardandoPerfil(false);
     }
   };
+
 
   const cambiarVista = (nuevaVista) => {
     const vistaDestino = nuevaVista === "playlist" ? "biblioteca" : nuevaVista;
@@ -1174,6 +1208,25 @@ function App() {
     agregarAPlaylist(cancion, playlistIdDestino);
   };
 
+  const agregarCancionActualAPlaylist = () => {
+    if (playlistsUsuario.length === 0) {
+      mostrarMensajeReproductor(
+        "Aún no tienes playlists creadas. Crea una para agregar canciones.",
+        "error"
+      );
+      return;
+    }
+
+    if (playlistsUsuario.length === 1) {
+      agregarAPlaylist(cancionActual, playlistsUsuario[0].id);
+      return;
+    }
+
+    setMenuAgregarPlaylistCancionId((anterior) =>
+      anterior === PLAYER_PLAYLIST_MENU_ID ? null : PLAYER_PLAYLIST_MENU_ID
+    );
+  };
+
   const abrirFormularioPlaylist = () => {
     setMenuPlaylistAbierto(false);
     setCrearPlaylistAbierto(true);
@@ -1225,6 +1278,8 @@ function App() {
     if (!playlistActiva) {
       return;
     }
+
+    setMenuAccionesCancionId(null);
 
     setPlaylistsUsuario((anterior) =>
       anterior.map((playlist) =>
@@ -1302,6 +1357,13 @@ function App() {
     setUsuario(null);
     setMensajePerfil("");
     setErrorPerfil("");
+    setFormContrasenaPerfil({
+      contrasenaActual: "",
+      contrasenaNueva: "",
+      confirmarContrasenaNueva: "",
+    });
+    setMensajeContrasenaPerfil("");
+    setErrorContrasenaPerfil("");
     setMiniPlayerVisible(false);
     setHistorialReproducciones([]);
     setErrorHistorial("");
@@ -1309,6 +1371,7 @@ function App() {
     setErrorFavoritos("");
     setPlaylistsUsuario([]);
     setPlaylistSeleccionadaId(null);
+    setMenuAccionesCancionId(null);
     setCancionesPopulares([]);
     setErrorPopulares("");
     setCargandoPopulares(false);
@@ -1357,9 +1420,6 @@ function App() {
             onClick={() => cambiarVista("perfil")}
           >
             Perfil
-          </button>
-          <button type="button" className="logout-button" onClick={cerrarSesion}>
-            Cerrar sesión
           </button>
         </nav>
       </aside>
@@ -1698,16 +1758,50 @@ function App() {
                           <td>{song.album}</td>
                           <td>{Math.floor((song.duracion || 0) / 60)}:{String(Math.floor((song.duracion || 0) % 60)).padStart(2, "0")}</td>
                           <td>
-                            <button
-                              type="button"
-                              className="secondary-link-button table-action-button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                alternarFavoritoCancion(song);
-                              }}
-                            >
-                              {esCancionFavorita(song) ? "♥" : "♡"}
-                            </button>
+                            <div className="song-actions-menu">
+                              <button
+                                type="button"
+                                className="secondary-link-button table-action-button song-action-trigger"
+                                aria-label="Acciones de la canción"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const claveMenu = `library-${song.id}-${index}`;
+                                  setMenuAccionesCancionId((anterior) =>
+                                    anterior === claveMenu ? null : claveMenu
+                                  );
+                                }}
+                              >
+                                ⋯
+                              </button>
+
+                              {menuAccionesCancionId === `library-${song.id}-${index}` && (
+                                <div className="playlist-dropdown-menu song-row-dropdown">
+                                  <button
+                                    type="button"
+                                    className="playlist-dropdown-item"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      alternarFavoritoCancion(song);
+                                      setMenuAccionesCancionId(null);
+                                    }}
+                                  >
+                                    {esCancionFavorita(song)
+                                      ? "Quitar de favoritas"
+                                      : "Agregar a favoritas"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="playlist-dropdown-item"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      eliminarDePlaylist(song.id);
+                                    }}
+                                  >
+                                    Eliminar de playlist
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1845,7 +1939,40 @@ function App() {
             <div className="player-cover"></div>
             <div className="player-title">{cancionActual.titulo}</div>
             <div className="player-artist">
-              {cancionActual.artista} • <span>Agregar a playlist</span>
+              {cancionActual.artista} •{" "}
+              {playlistsUsuario.length > 1 ? (
+                <span className="player-add-playlist-picker">
+                  <button
+                    type="button"
+                    className="player-add-playlist-button"
+                    onClick={agregarCancionActualAPlaylist}
+                  >
+                    Agregar a playlist
+                  </button>
+                  {menuAgregarPlaylistCancionId === PLAYER_PLAYLIST_MENU_ID && (
+                    <div className="search-playlist-menu player-playlist-menu">
+                      {playlistsUsuario.map((playlist) => (
+                        <button
+                          key={playlist.id}
+                          type="button"
+                          className="search-playlist-menu-item"
+                          onClick={() => seleccionarPlaylistParaCancion(cancionActual, playlist.id)}
+                        >
+                          {playlist.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="player-add-playlist-button"
+                  onClick={agregarCancionActualAPlaylist}
+                >
+                  Agregar a playlist
+                </button>
+              )}
               <button
                 type="button"
                 className="secondary-link-button favorite-inline-button"
@@ -1853,9 +1980,6 @@ function App() {
               >
                 {esCancionFavorita(cancionActual) ? "♥ Favorita" : "♡ Favorita"}
               </button>
-            </div>
-            <div className="player-progress-line">
-              <div className="player-progress-bar" style={{ width: duracion > 0 ? `${(progreso / duracion) * 100}%` : "0%" }}></div>
             </div>
             <input
               className="player-progress-slider"
@@ -1890,7 +2014,17 @@ function App() {
               />
               <span>{volumen}%</span>
             </div>
-            {mensajeReproductor && <p className={tipoMensajeReproductor === "success" ? "player-success" : "player-error"}>{mensajeReproductor}</p>}
+            {mensajeReproductor && (
+              <p
+                className={`player-message ${
+                  mensajeReproductorVisible
+                    ? "player-message-visible"
+                    : "player-message-hidden"
+                }`}
+              >
+                {mensajeReproductor}
+              </p>
+            )}
           </section>
         ) : vistaActiva === "artista" ? (
           <section className="artist-profile-section">
@@ -2053,44 +2187,53 @@ function App() {
                 )}
               </article>
 
-              <form className="profile-card profile-form" onSubmit={guardarPerfil}>
-                <div className="form-header">
-                  <h3>Editar perfil</h3>
-                  <p>Actualiza tus datos públicos.</p>
-                </div>
+              <div className="profile-side-column">
+                <form className="profile-card profile-form" onSubmit={guardarPerfil}>
+                  <div className="form-header">
+                    <h3>Editar perfil</h3>
+                    <p>Actualiza tus datos públicos.</p>
+                  </div>
 
-                <div className="form-grid">
-                  <label className="field">
-                    <span>Nombre completo</span>
-                    <input
-                      type="text"
-                      name="nombre"
-                      value={perfilForm.nombre}
-                      onChange={actualizarCampo}
-                      placeholder="Tu nombre"
-                    />
-                  </label>
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>Nombre completo</span>
+                      <input
+                        type="text"
+                        name="nombre"
+                        value={perfilForm.nombre}
+                        onChange={actualizarCampo}
+                        placeholder="Tu nombre"
+                      />
+                    </label>
 
-                  <label className="field">
-                    <span>Correo electrónico</span>
-                    <input
-                      type="email"
-                      name="correo"
-                      value={perfilForm.correo}
-                      onChange={actualizarCampo}
-                      placeholder="nombre@correo.com"
-                    />
-                  </label>
+                    <label className="field">
+                      <span>Correo electrónico</span>
+                      <input
+                        type="email"
+                        name="correo"
+                        value={perfilForm.correo}
+                        onChange={actualizarCampo}
+                        placeholder="nombre@correo.com"
+                      />
+                    </label>
+                  </div>
 
-                </div>
+                  {errorPerfil && <p className="form-error">{errorPerfil}</p>}
+                  {mensajePerfil && <p className="form-success">{mensajePerfil}</p>}
 
-                {errorPerfil && <p className="form-error">{errorPerfil}</p>}
-                {mensajePerfil && <p className="form-success">{mensajePerfil}</p>}
+                  <button type="submit" className="save-button" disabled={guardandoPerfil || cargandoPerfil}>
+                    {guardandoPerfil ? "Guardando..." : "Guardar cambios"}
+                  </button>
+                </form>
 
-                <button type="submit" className="save-button" disabled={guardandoPerfil || cargandoPerfil}>
-                  {guardandoPerfil ? "Guardando..." : "Guardar cambios"}
+                <button
+                  type="button"
+                  className="profile-card profile-logout-button"
+                  onClick={cerrarSesion}
+                >
+                  Cerrar sesión
                 </button>
-              </form>
+              </div>
             </div>
           </section>
         ) : (
@@ -2265,7 +2408,17 @@ function App() {
                 />
               </div>
             </div>
-            {mensajeReproductor && <p className={tipoMensajeReproductor === "success" ? "player-success" : "player-error"}>{mensajeReproductor}</p>}
+            {mensajeReproductor && (
+              <p
+                className={`player-message ${
+                  mensajeReproductorVisible
+                    ? "player-message-visible"
+                    : "player-message-hidden"
+                }`}
+              >
+                {mensajeReproductor}
+              </p>
+            )}
           </>
         )}
         <audio ref={audioRef} src={cancionActual.audioUrl} preload="metadata" />

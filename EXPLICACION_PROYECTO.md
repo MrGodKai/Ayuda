@@ -50,6 +50,24 @@ El backend usa middleware para:
 - Limitar intentos de login
 - Controlar roles cuando hace falta
 
+### Recuperación y cambio de contraseña
+
+El módulo de autenticación ahora incluye:
+
+- `POST /api/auth/forgot-password`: solicita recuperación por correo
+- `POST /api/auth/reset-password`: restablece contraseña con token de un solo uso
+- `POST /api/auth/change-password`: cambia contraseña desde sesión autenticada
+
+Medidas de seguridad implementadas:
+
+- Tokens aleatorios de 256 bits
+- Almacenamiento solo del hash SHA-256 del token
+- Expiración corta del token (configurable)
+- Invalidación de tokens al usarse
+- Rate limiting por IP en los endpoints sensibles
+- Respuesta genérica en recuperación para evitar enumeración de correos
+- Correo de notificación al cambiar/restablecer contraseña
+
 ## 4. Cómo funciona el frontend
 
 El frontend principal está en [frontend/src/App.jsx](frontend/src/App.jsx).
@@ -191,6 +209,15 @@ Un recorrido claro para presentar sería:
 - [frontend/src/App.jsx](frontend/src/App.jsx): interfaz principal y estados
 - [frontend/src/App.css](frontend/src/App.css): estilos visuales
 - [database/istream.sql](database/istream.sql): estructura de la base de datos
+
+## 14. Variables de entorno importantes
+
+Revisa el archivo [backend/.env.example](backend/.env.example) para configurar:
+
+- Base de datos MySQL
+- JWT (`JWT_SECRET` seguro)
+- SMTP para envío de recuperación
+- URL de recuperación (`PASSWORD_RESET_URL_BASE`)
 
 ---
 

@@ -616,6 +616,36 @@
   color: rgba(255, 255, 255, 0.88);
 }
 
+.player-message {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 80;
+  margin: 0;
+  padding: 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  width: min(92vw, 560px);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(0, 0, 0, 0.86);
+  color: #ffffff;
+  transform: translate(-50%, 12px);
+  opacity: 0;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+  pointer-events: none;
+}
+
+.player-message.player-message-visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+.player-message.player-message-hidden {
+  transform: translate(-50%, 12px);
+  opacity: 0;
+}
+
 .playlist-cover,
 .player-cover {
   position: relative;
@@ -918,6 +948,26 @@
   font-size: 12px;
 }
 
+.song-actions-menu {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.song-action-trigger {
+  min-width: 34px;
+  padding: 6px 9px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.song-row-dropdown {
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 205px;
+  z-index: 35;
+}
+
 .favorite-inline-button {
   margin-left: 10px;
   padding: 6px 10px;
@@ -982,7 +1032,28 @@
   font-size: 15px;
 }
 
-.player-artist span {
+.player-add-playlist-picker {
+  position: relative;
+  display: inline-block;
+}
+
+.player-add-playlist-button {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--text-main);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.player-playlist-menu {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.player-artist span,
+.player-artist .player-add-playlist-button {
   color: var(--text-main);
   text-decoration: underline;
   cursor: pointer;
@@ -1221,6 +1292,12 @@
   gap: 18px;
 }
 
+.profile-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .profile-card {
   color: var(--text-main);
 }
@@ -1319,6 +1396,22 @@
 
 .profile-form .save-button:hover:not(:disabled) {
   background: linear-gradient(90deg, #6a6a71, #878790);
+}
+
+.profile-logout-button {
+  border: none;
+  width: 100%;
+  margin-top: 0;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, #6f6f76, #8c8c94);
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profile-logout-button:hover {
+  background: linear-gradient(90deg, #7a7a82, #9a9aa1);
 }
 
 .profile-head h3,

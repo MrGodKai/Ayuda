@@ -2,11 +2,64 @@ import { useState } from "react";
 import "./Login.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONTRASENA_SEGURA_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,72}$/;
 
+function obtenerTokenDesdeURL() {
+  const params = new URLSearchParams(window.location.search);
+  return String(params.get("token") || "").trim();
+}
+
+function limpiarTokenDeURL() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("token");
+  const nuevaUrl = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, "", nuevaUrl);
+}
+
+function obtenerConfigModo(modo) {
+  if (modo === "register") {
+    return {
+      titulo: "Crear una cuenta",
+      subtitulo: "Complete sus datos para registrarse en iStream.",
+      boton: "Crear cuenta",
+      botonCargando: "Registrando...",
+    };
+  }
+
+  if (modo === "recover") {
+    return {
+      titulo: "Recuperar contraseña",
+      subtitulo:
+        "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+      boton: "Enviar enlace",
+      botonCargando: "Enviando...",
+    };
+  }
+
+  if (modo === "reset") {
+    return {
+      titulo: "Restablecer contraseña",
+      subtitulo:
+        "Define una nueva contraseña segura para tu cuenta.",
+      boton: "Actualizar contraseña",
+      botonCargando: "Actualizando...",
+    };
+  }
+
+  return {
+    titulo: "Iniciar sesión",
+    subtitulo: "Ingrese sus datos para acceder a su cuenta.",
+    boton: "Iniciar sesión",
+    botonCargando: "Ingresando...",
+  };
+}
+
 function Login({ onLogin }) {
-  const [modo, setModo] = useState("login");
+  const tokenInicial = obtenerTokenDesdeURL();
+  const [modo, setModo] = useState(tokenInicial ? "reset" : "login");
+  const [tokenRecuperacion, setTokenRecuperacion] = useState(tokenInicial);
 
   const [formulario, setFormulario] = useState({
     nombre: "",
@@ -20,6 +73,11 @@ function Login({ onLogin }) {
   const [cargando, setCargando] = useState(false);
 
   const esRegistro = modo === "register";
+  const esLogin = modo === "login";
+  const esRecuperacion = modo === "recover";
+  const esReset = modo === "reset";
+
+  const configModo = obtenerConfigModo(modo);
 
   const actualizarCampo = (event) => {
     const { name, value } = event.target;
@@ -30,25 +88,73 @@ function Login({ onLogin }) {
     }));
   };
 
-  const cambiarModo = () => {
-    setModo((modoAnterior) =>
-      modoAnterior === "login" ? "register" : "login"
-    );
+  const cambiarModo = (nuevoModo) => {
+    setModo(nuevoModo);
 
     setMensajeError("");
     setMensajeExito("");
 
     setFormulario((formularioAnterior) => ({
       nombre: "",
-      correo: formularioAnterior.correo,
+      correo:
+        nuevoModo === "login" || nuevoModo === "recover"
+          ? formularioAnterior.correo
+          : "",
       contrasena: "",
       confirmarContrasena: "",
     }));
+
+    if (nuevoModo !== "reset") {
+      setTokenRecuperacion("");
+      limpiarTokenDeURL();
+    }
   };
 
   const validarFormulario = () => {
-    if (!formulario.correo.trim() || !formulario.contrasena) {
-      setMensajeError("Debe completar el correo y la contraseña.");
+    const correo = formulario.correo.trim();
+
+    if (esReset) {
+      if (!tokenRecuperacion) {
+        setMensajeError("El enlace de recuperación es inválido.");
+        return false;
+      }
+
+      if (!formulario.contrasena) {
+        setMensajeError("Debe ingresar una nueva contraseña.");
+        return false;
+      }
+
+      if (!CONTRASENA_SEGURA_REGEX.test(formulario.contrasena)) {
+        setMensajeError(
+          "La contraseña debe incluir mayúscula, minúscula, número y símbolo."
+        );
+        return false;
+      }
+
+      if (formulario.contrasena !== formulario.confirmarContrasena) {
+        setMensajeError("Las contraseñas no coinciden.");
+        return false;
+      }
+
+      return true;
+    }
+
+    if (!correo) {
+      setMensajeError("Debe completar el correo electrónico.");
+      return false;
+    }
+
+    if (!CORREO_REGEX.test(correo)) {
+      setMensajeError("El correo no tiene un formato válido.");
+      return false;
+    }
+
+    if (esRecuperacion) {
+      return true;
+    }
+
+    if (!formulario.contrasena) {
+      setMensajeError("Debe completar la contraseña.");
       return false;
     }
 
@@ -63,17 +169,13 @@ function Login({ onLogin }) {
         return false;
       }
 
-      if (
-  !CONTRASENA_SEGURA_REGEX.test(
-    formulario.contrasena
-  )
-) {
-  setMensajeError(
-    "La contraseña debe incluir mayúscula, minúscula, número y símbolo."
-  );
+      if (!CONTRASENA_SEGURA_REGEX.test(formulario.contrasena)) {
+        setMensajeError(
+          "La contraseña debe incluir mayúscula, minúscula, número y símbolo."
+        );
 
-  return false;
-}
+        return false;
+      }
 
       if (formulario.contrasena !== formulario.confirmarContrasena) {
         setMensajeError("Las contraseñas no coinciden.");
@@ -97,17 +199,35 @@ function Login({ onLogin }) {
     try {
       setCargando(true);
 
-      const endpoint = esRegistro ? "/auth/register" : "/auth/login";
-      const cuerpoSolicitud = esRegistro
-        ? {
-            nombre: formulario.nombre.trim(),
-            correo: formulario.correo.trim(),
-            contrasena: formulario.contrasena,
-          }
-        : {
-            correo: formulario.correo.trim(),
-            contrasena: formulario.contrasena,
-          };
+      let endpoint = "/auth/login";
+      let cuerpoSolicitud = {
+        correo: formulario.correo.trim(),
+        contrasena: formulario.contrasena,
+      };
+
+      if (esRegistro) {
+        endpoint = "/auth/register";
+        cuerpoSolicitud = {
+          nombre: formulario.nombre.trim(),
+          correo: formulario.correo.trim(),
+          contrasena: formulario.contrasena,
+        };
+      }
+
+      if (esRecuperacion) {
+        endpoint = "/auth/forgot-password";
+        cuerpoSolicitud = {
+          correo: formulario.correo.trim(),
+        };
+      }
+
+      if (esReset) {
+        endpoint = "/auth/reset-password";
+        cuerpoSolicitud = {
+          token: tokenRecuperacion,
+          contrasenaNueva: formulario.contrasena,
+        };
+      }
 
       const respuesta = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
@@ -121,6 +241,28 @@ function Login({ onLogin }) {
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo completar la solicitud.");
+      }
+
+      if (esRecuperacion) {
+        setMensajeExito(
+          datos.mensaje ||
+            "Si el correo existe, recibirás un enlace para restablecer tu contraseña."
+        );
+        return;
+      }
+
+      if (esReset) {
+        setMensajeExito("Contraseña restablecida correctamente. Ya puedes iniciar sesión.");
+        setTokenRecuperacion("");
+        limpiarTokenDeURL();
+        setModo("login");
+        setFormulario((formularioAnterior) => ({
+          nombre: "",
+          correo: formularioAnterior.correo,
+          contrasena: "",
+          confirmarContrasena: "",
+        }));
+        return;
       }
 
       if (esRegistro) {
@@ -174,13 +316,9 @@ function Login({ onLogin }) {
             <span>♫</span> iStream
           </div>
 
-          <h2>{esRegistro ? "Crear una cuenta" : "Iniciar sesión"}</h2>
+          <h2>{configModo.titulo}</h2>
 
-          <p className="subtitle">
-            {esRegistro
-              ? "Complete sus datos para registrarse en iStream."
-              : "Ingrese sus datos para acceder a su cuenta."}
-          </p>
+          <p className="subtitle">{configModo.subtitulo}</p>
 
           {esRegistro && (
             <div className="form-group">
@@ -198,35 +336,43 @@ function Login({ onLogin }) {
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="correo">Correo electrónico</label>
-            <input
-              id="correo"
-              name="correo"
-              type="email"
-              placeholder="nombre@correo.com"
-              value={formulario.correo}
-              onChange={actualizarCampo}
-              autoComplete="email"
-              required
-            />
-          </div>
+          {!esReset && (
+            <div className="form-group">
+              <label htmlFor="correo">Correo electrónico</label>
+              <input
+                id="correo"
+                name="correo"
+                type="email"
+                placeholder="nombre@correo.com"
+                value={formulario.correo}
+                onChange={actualizarCampo}
+                autoComplete="email"
+                required
+              />
+            </div>
+          )}
 
-          <div className="form-group">
-            <label htmlFor="contrasena">Contraseña</label>
-            <input
-              id="contrasena"
-              name="contrasena"
-              type="password"
-              placeholder={esRegistro? "Mayúscula, minúscula, número y símbolo": "Ingrese su contraseña"}
-              value={formulario.contrasena}
-              onChange={actualizarCampo}
-              autoComplete={esRegistro ? "new-password" : "current-password"}
-              required
-            />
-          </div>
+          {!esRecuperacion && (
+            <div className="form-group">
+              <label htmlFor="contrasena">{esReset ? "Nueva contraseña" : "Contraseña"}</label>
+              <input
+                id="contrasena"
+                name="contrasena"
+                type="password"
+                placeholder={
+                  esRegistro || esReset
+                    ? "Mayúscula, minúscula, número y símbolo"
+                    : "Ingrese su contraseña"
+                }
+                value={formulario.contrasena}
+                onChange={actualizarCampo}
+                autoComplete={esRegistro || esReset ? "new-password" : "current-password"}
+                required
+              />
+            </div>
+          )}
 
-          {esRegistro && (
+          {(esRegistro || esReset) && (
             <div className="form-group">
               <label htmlFor="confirmarContrasena">Confirmar contraseña</label>
               <input
@@ -246,21 +392,58 @@ function Login({ onLogin }) {
           {mensajeExito && <p className="success-message">{mensajeExito}</p>}
 
           <button type="submit" className="login-button" disabled={cargando}>
-            {cargando
-              ? esRegistro
-                ? "Registrando..."
-                : "Ingresando..."
-              : esRegistro
-                ? "Crear cuenta"
-                : "Iniciar sesión"}
+            {cargando ? configModo.botonCargando : configModo.boton}
           </button>
 
-          <p className="register-text">
-            {esRegistro ? "¿Ya tienes una cuenta?" : "¿Todavía no tienes una cuenta?"}{" "}
-            <button type="button" className="link-button" onClick={cambiarModo}>
-              {esRegistro ? "Iniciar sesión" : "Regístrate"}
-            </button>
-          </p>
+          {esLogin && (
+            <p className="register-text">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => cambiarModo("recover")}
+              >
+                Olvidé mi contraseña
+              </button>
+            </p>
+          )}
+
+          {esRecuperacion && (
+            <p className="register-text">
+              ¿Recordaste tu contraseña?{" "}
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => cambiarModo("login")}
+              >
+                Volver a iniciar sesión
+              </button>
+            </p>
+          )}
+
+          {esReset && (
+            <p className="register-text">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => cambiarModo("login")}
+              >
+                Cancelar y volver al inicio de sesión
+              </button>
+            </p>
+          )}
+
+          {(esLogin || esRegistro) && (
+            <p className="register-text">
+              {esRegistro ? "¿Ya tienes una cuenta?" : "¿Todavía no tienes una cuenta?"}{" "}
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => cambiarModo(esRegistro ? "login" : "register")}
+              >
+                {esRegistro ? "Iniciar sesión" : "Regístrate"}
+              </button>
+            </p>
+          )}
         </form>
       </section>
     </main>

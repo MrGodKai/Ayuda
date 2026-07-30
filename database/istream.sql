@@ -6,6 +6,7 @@ USE istream;
 
 DROP TABLE IF EXISTS canciones_favoritas;
 DROP TABLE IF EXISTS historial_reproducciones;
+DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS canciones;
 DROP TABLE IF EXISTS artistas;
 DROP TABLE IF EXISTS usuarios;
@@ -125,6 +126,26 @@ CREATE TABLE canciones_favoritas (
         FOREIGN KEY (id_cancion)
         REFERENCES canciones(id_cancion)
         ON DELETE SET NULL
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE password_resets (
+    id_reset BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    expira_en DATETIME NOT NULL,
+    usado_en DATETIME NULL,
+    solicitado_ip VARCHAR(45) NULL,
+    solicitado_user_agent VARCHAR(255) NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uk_password_resets_token_hash (token_hash),
+    INDEX idx_password_resets_usuario (id_usuario, expira_en),
+
+    CONSTRAINT fk_password_resets_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
         ON UPDATE CASCADE
 );
 

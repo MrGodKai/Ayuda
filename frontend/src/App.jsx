@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import Login from "./components/Login";
+import PerfilArtista from "./components/PerfilArtista";
+import GestionCanciones from "./components/GestionCanciones";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 const INTERVALO_ACTUALIZACION_POPULARES_MS = 60 * 1000;
@@ -75,8 +77,20 @@ function formatearFechaHistorial(fecha) {
   return fechaNormalizada.toLocaleString();
 }
 
-function obtenerFotoArtista() {
-  return FOTO_ARTISTA_BLANCA;
+function resolverUrlImagen(ruta) {
+  if (!ruta) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(ruta) || ruta.startsWith("data:")) {
+    return ruta;
+  }
+
+  return `${API_URL.replace(/\/api\/?$/, "")}${ruta}`;
+}
+
+function obtenerFotoArtista(foto) {
+  return resolverUrlImagen(foto) || FOTO_ARTISTA_BLANCA;
 }
 
 function App() {
@@ -1421,6 +1435,24 @@ function App() {
           >
             Perfil
           </button>
+          {usuario.rol === "artista" && (
+            <button
+              type="button"
+              className={`sidebar-link ${vistaActiva === "perfil-artista" ? "active" : ""}`}
+              onClick={() => cambiarVista("perfil-artista")}
+            >
+              Mi perfil de artista
+            </button>
+          )}
+          {usuario.rol === "artista" && (
+            <button
+              type="button"
+              className={`sidebar-link ${vistaActiva === "mi-musica" ? "active" : ""}`}
+              onClick={() => cambiarVista("mi-musica")}
+            >
+              Mi música
+            </button>
+          )}
         </nav>
       </aside>
 
@@ -2032,6 +2064,12 @@ function App() {
               {cargandoArtistas && <p className="search-empty">Cargando perfil del artista...</p>}
               {artistaSeleccionado && (
                 <>
+                  {artistaSeleccionado.portada && (
+                    <div
+                      className="artist-admin-cover-preview artist-profile-cover"
+                      style={{ backgroundImage: `url("${resolverUrlImagen(artistaSeleccionado.portada)}")` }}
+                    />
+                  )}
                   <div className="artist-profile-header">
                     <img
                       className="artist-photo"
@@ -2096,6 +2134,10 @@ function App() {
               ))}
             </div>
           </section>
+        ) : vistaActiva === "perfil-artista" ? (
+          <PerfilArtista usuario={usuario} onVerPerfilPublico={abrirPerfilArtista} />
+        ) : vistaActiva === "mi-musica" ? (
+          <GestionCanciones usuario={usuario} />
         ) : vistaActiva === "perfil" ? (
           <section className="profile-section">
             <article className="profile-card profile-hero-card">

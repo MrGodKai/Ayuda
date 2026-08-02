@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { urlAbsoluta } = require("../utils/urls");
 
 /**
  * Obtiene seis canciones activas ordenadas por popularidad
@@ -68,9 +69,9 @@ exports.obtenerCancionesPopulares = async (
           duracion:
             cancion.duracion_segundos || 0,
           portada:
-            cancion.portada_url || null,
+            urlAbsoluta(cancion.portada_url),
           audioUrl:
-            cancion.audio_url || null,
+            urlAbsoluta(cancion.audio_url),
         })
       ),
     });

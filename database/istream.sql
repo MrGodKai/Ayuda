@@ -38,9 +38,11 @@ CREATE TABLE usuarios (
 
 CREATE TABLE artistas (
     id_artista INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NULL,
     nombre VARCHAR(150) NOT NULL UNIQUE,
     biografia VARCHAR(500) NULL,
     foto_url VARCHAR(500) NULL,
+    portada_url VARCHAR(500) NULL,
     generos VARCHAR(255) NULL,
     estado BOOLEAN NOT NULL DEFAULT TRUE,
 
@@ -49,7 +51,15 @@ CREATE TABLE artistas (
     actualizado_en TIMESTAMP
         NOT NULL
         DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uk_artistas_usuario (id_usuario),
+
+    CONSTRAINT fk_artistas_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
 );
 
 CREATE TABLE canciones (

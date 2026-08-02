@@ -50,6 +50,7 @@ exports.obtenerArtistas = async (req, res) => {
          nombre,
          biografia,
          foto_url,
+         portada_url,
          generos
        FROM artistas
        WHERE estado = TRUE
@@ -83,6 +84,7 @@ exports.obtenerArtistas = async (req, res) => {
           nombre: artista.nombre,
           biografia: artista.biografia || `Perfil público del artista ${artista.nombre}.`,
           foto: artista.foto_url || "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80",
+          portada: artista.portada_url || null,
           generos: (artista.generos || "Sin género")
             .split(",")
             .map((genero) => genero.trim())
@@ -121,6 +123,7 @@ exports.obtenerPerfilArtista = async (req, res) => {
          nombre,
          biografia,
          foto_url,
+         portada_url,
          generos
        FROM artistas
        WHERE estado = TRUE
@@ -158,6 +161,7 @@ exports.obtenerPerfilArtista = async (req, res) => {
         nombre: artista.nombre,
         biografia: artista.biografia || `Perfil público del artista ${artista.nombre}.`,
         foto: artista.foto_url || "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80",
+        portada: artista.portada_url || null,
         generos: (artista.generos || "Sin género")
           .split(",")
           .map((genero) => genero.trim())

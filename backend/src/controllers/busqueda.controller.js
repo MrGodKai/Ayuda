@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { urlAbsoluta } = require("../utils/urls");
 
 const datosFallback = [
   {
@@ -162,8 +163,8 @@ exports.buscarContenido = async (req, res) => {
         genero: cancion.genero || "Sin género",
         descripcion: cancion.descripcion || "Sin descripción",
         duracion: cancion.duracion_segundos || 0,
-        audioUrl: cancion.audio_url || null,
-        portada: cancion.portada_url || null,
+        audioUrl: urlAbsoluta(cancion.audio_url),
+        portada: urlAbsoluta(cancion.portada_url),
       })),
       artistas: artistas.map((artista) => ({
         nombre: artista.nombre,

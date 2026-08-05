@@ -94,6 +94,7 @@ exports.obtenerPerfil = async (req, res) => {
          correo,
          rol,
          estado,
+         perfil_privado,
          foto_perfil,
          telefono,
          ciudad,
@@ -120,6 +121,7 @@ exports.obtenerPerfil = async (req, res) => {
         correo: usuario.correo,
         rol: usuario.rol,
         estado: Boolean(usuario.estado),
+        perfilPrivado: Boolean(usuario.perfil_privado),
         fotoPerfil: usuario.foto_perfil,
         telefono: usuario.telefono,
         ciudad: usuario.ciudad,
@@ -240,6 +242,7 @@ exports.actualizarPerfil = async (req, res) => {
          correo,
          rol,
          estado,
+         perfil_privado,
          foto_perfil,
          telefono,
          ciudad,
@@ -261,6 +264,7 @@ exports.actualizarPerfil = async (req, res) => {
         correo: usuario.correo,
         rol: usuario.rol,
         estado: Boolean(usuario.estado),
+        perfilPrivado: Boolean(usuario.perfil_privado),
         fotoPerfil: usuario.foto_perfil,
         telefono: usuario.telefono,
         ciudad: usuario.ciudad,
@@ -280,6 +284,42 @@ exports.actualizarPerfil = async (req, res) => {
 
     return res.status(500).json({
       mensaje: "No se pudo actualizar el perfil.",
+    });
+  }
+};
+
+exports.actualizarPrivacidad = async (req, res) => {
+  try {
+    const idUsuario = req.usuario?.id;
+    const privado = req.body.privado;
+
+    if (!idUsuario) {
+      return res.status(401).json({
+        mensaje: "No se pudo identificar al usuario.",
+      });
+    }
+
+    if (typeof privado !== "boolean") {
+      return res.status(400).json({
+        mensaje: "El valor de privacidad debe ser verdadero o falso.",
+      });
+    }
+
+    await pool.execute(
+      `UPDATE usuarios SET perfil_privado = ? WHERE id_usuario = ?`,
+      [privado ? 1 : 0, idUsuario]
+    );
+
+    return res.status(200).json({
+      mensaje: privado
+        ? "Tu perfil ahora es privado."
+        : "Tu perfil ahora es público.",
+      perfilPrivado: privado,
+    });
+  } catch (error) {
+    console.error("Error al actualizar privacidad:", error);
+    return res.status(500).json({
+      mensaje: "No se pudo actualizar la configuración de privacidad.",
     });
   }
 };

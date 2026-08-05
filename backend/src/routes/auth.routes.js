@@ -13,6 +13,7 @@ const {
 const {
   obtenerPerfil,
   actualizarPerfil,
+  actualizarPrivacidad,
 } = require(
   "../controllers/perfil.controller"
 );
@@ -75,6 +76,12 @@ router.put(
   "/perfil",
   verificarToken,
   actualizarPerfil
+);
+
+router.patch(
+  "/privacidad",
+  verificarToken,
+  actualizarPrivacidad
 );
 
 module.exports = router;

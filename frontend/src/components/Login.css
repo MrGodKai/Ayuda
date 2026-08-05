@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1.1fr 1fr;
-  background: #0d0d12;
+  background: #090909;
   color: rgb(255, 255, 255);
 }
 
@@ -14,9 +14,9 @@
   padding: 42px 60px 80px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 15% 20%, rgba(133, 66, 255, 0.45), transparent 38%),
-    radial-gradient(circle at 80% 75%, rgba(32, 210, 155, 0.2), transparent 32%),
-    linear-gradient(145deg, #151020, #08080d);
+    radial-gradient(circle at 15% 20%, rgba(30, 215, 96, 0.3), transparent 38%),
+    radial-gradient(circle at 80% 75%, rgba(29, 185, 84, 0.24), transparent 32%),
+    linear-gradient(145deg, #161616, #080808);
 }
 
 .login-decoration::after {
@@ -46,7 +46,7 @@
   width: 42px;
   height: 42px;
   border-radius: 13px;
-  background: #8f4bff;
+  background: linear-gradient(140deg, #1ed760, #169c46);
 }
 
 .decoration-content {
@@ -56,7 +56,7 @@
 }
 
 .small-title {
-  color: #a98aff;
+  color: #1ed760;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 3px;
@@ -128,8 +128,8 @@
 }
 
 .form-group input:focus {
-  border-color: #985cff;
-  box-shadow: 0 0 0 3px rgba(152, 92, 255, 0.15);
+  border-color: #1ed760;
+  box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.2);
 }
 
 .error-message {
@@ -147,7 +147,7 @@
   padding: 15px;
   border: none;
   border-radius: 11px;
-  background: linear-gradient(90deg, #8147ff, #a25cff);
+  background: linear-gradient(90deg, #169c46, #1ed760);
   color: rgb(252, 251, 251);
   font-weight: 800;
   cursor: pointer;
@@ -173,7 +173,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: #aa79ff;
+  color: #1ed760;
   font-weight: 700;
   cursor: pointer;
 }

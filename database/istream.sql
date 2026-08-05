@@ -7,6 +7,8 @@ USE istream;
 DROP TABLE IF EXISTS canciones_favoritas;
 DROP TABLE IF EXISTS historial_reproducciones;
 DROP TABLE IF EXISTS password_resets;
+DROP TABLE IF EXISTS relaciones_amistad;
+DROP TABLE IF EXISTS seguidores_usuarios;
 DROP TABLE IF EXISTS canciones;
 DROP TABLE IF EXISTS artistas;
 DROP TABLE IF EXISTS usuarios;
@@ -24,6 +26,7 @@ CREATE TABLE usuarios (
     ) NOT NULL DEFAULT 'usuario',
 
     estado BOOLEAN NOT NULL DEFAULT TRUE,
+    perfil_privado BOOLEAN NOT NULL DEFAULT FALSE,
     foto_perfil VARCHAR(500) NULL,
     telefono VARCHAR(30) NULL,
     ciudad VARCHAR(100) NULL,
@@ -159,43 +162,94 @@ CREATE TABLE password_resets (
         ON UPDATE CASCADE
 );
 
-INSERT INTO artistas (
-    nombre,
-    biografia,
-    foto_url,
-    generos,
-    estado
-)
-VALUES
-    ('Artista-XA-12', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=400&q=80', 'Synthwave, Indie', TRUE),
-    ('Artista-RB-07', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=400&q=80', 'Pop, Electrónica', TRUE),
-    ('Artista-LM-44', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80', 'Latino, Alternativo', TRUE),
-    ('Artista-KP-21', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80', 'Indie, Rock', TRUE),
-    ('Artista-CT-18', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80', 'Electrónica, Synthwave', TRUE),
-    ('Artista-OR-33', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=400&q=80', 'Alternativo, Indie', TRUE),
-    ('Artista-SF-55', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=400&q=80', 'Rock, Pop', TRUE),
-    ('Artista-NQ-62', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80', 'R&B, Soul', TRUE),
-    ('Artista-HJ-77', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=400&q=80', 'Soul, Pop', TRUE),
-    ('Artista-PL-28', 'Perfil público ficticio para pruebas de catálogo.', 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=400&q=80', 'Hip Hop, Urban', TRUE);
+CREATE TABLE relaciones_amistad (
+    id_relacion BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario_emisor INT NOT NULL,
+    id_usuario_receptor INT NOT NULL,
+    id_usuario_menor INT NOT NULL,
+    id_usuario_mayor INT NOT NULL,
 
-INSERT INTO canciones (
-    id_artista,
-    titulo,
-    artista,
-    album,
-    genero,
-    duracion_segundos,
-    descripcion,
-    estado
-)
-VALUES
-    (1, 'Tema-AX-201', 'Artista-XA-12', 'Álbum-Zeta-03', 'Synthwave', 214, 'Tema ficticio generado para pruebas de catálogo.', TRUE),
-    (2, 'Tema-BR-447', 'Artista-RB-07', 'Álbum-Navio-11', 'Pop', 197, 'Registro de prueba con nombre aleatorio.', TRUE),
-    (3, 'Tema-LM-650', 'Artista-LM-44', 'Álbum-Onda-17', 'Latino', 231, 'Canción generada para validar contenido de catálogo.', TRUE),
-    (4, 'Tema-KP-114', 'Artista-KP-21', 'Álbum-Resplandor-09', 'Indie', 188, 'Contenido ficticio para pruebas internas.', TRUE),
-    (5, 'Tema-CT-910', 'Artista-CT-18', 'Álbum-Mistline-04', 'Electrónica', 202, 'Muestra de reproducción sin nombres reales.', TRUE),
-    (6, 'Tema-OR-312', 'Artista-OR-33', 'Álbum-Ternario-06', 'Alternativo', 176, 'Registro aleatorio para SQL y UI.', TRUE),
-    (7, 'Tema-SF-925', 'Artista-SF-55', 'Álbum-Kilo-22', 'Rock', 220, 'Canción ficticia de ejemplo para el sistema.', TRUE),
-    (8, 'Tema-NQ-881', 'Artista-NQ-62', 'Álbum-Sombra-08', 'R&B', 204, 'Dato generado para pruebas del reproductor y buscador.', TRUE),
-    (9, 'Tema-HJ-410', 'Artista-HJ-77', 'Álbum-Vector-19', 'Soul', 193, 'Contenido sintético para evaluación del catálogo.', TRUE),
-    (10, 'Tema-PL-540', 'Artista-PL-28', 'Álbum-Radio-14', 'Hip Hop', 209, 'Registro semilla de muestra para SQL.', TRUE);
+    estado ENUM(
+        'pendiente',
+        'aceptada',
+        'rechazada'
+    ) NOT NULL DEFAULT 'pendiente',
+
+    respondido_en DATETIME NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    actualizado_en TIMESTAMP
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uk_relaciones_amistad_par (id_usuario_menor, id_usuario_mayor),
+    INDEX idx_relaciones_receptor_estado (id_usuario_receptor, estado, creado_en),
+    INDEX idx_relaciones_emisor_estado (id_usuario_emisor, estado, creado_en),
+
+    CONSTRAINT fk_relaciones_amistad_emisor
+        FOREIGN KEY (id_usuario_emisor)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_relaciones_amistad_receptor
+        FOREIGN KEY (id_usuario_receptor)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE seguidores_usuarios (
+    id_seguimiento BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario_seguidor INT NOT NULL,
+    id_usuario_seguido INT NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uk_seguimiento_par (id_usuario_seguidor, id_usuario_seguido),
+    INDEX idx_seguidores_objetivo_fecha (id_usuario_seguido, creado_en),
+    INDEX idx_siguiendo_origen_fecha (id_usuario_seguidor, creado_en),
+
+    CONSTRAINT fk_seguidores_usuario_seguidor
+        FOREIGN KEY (id_usuario_seguidor)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_seguidores_usuario_seguido
+        FOREIGN KEY (id_usuario_seguido)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+INSERT INTO artistas (nombre, biografia, foto_url, generos, estado) VALUES
+('Artista Neon Vox', 'Productor de synthwave y electrónica atmosférica independiente.', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80', 'Synthwave, Indie', TRUE),
+('Artista Pop Nova', 'Cantante pop con influencias del R&B contemporáneo.', 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&q=80', 'Pop, Electrónica', TRUE),
+('Artista Ritmo Sur', 'Compositor de música latina y fusión tropical.', 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&q=80', 'Latino, Alternativo', TRUE),
+('Artista Indie Craft', 'Guitarrista indie con una propuesta auténtica y emotiva.', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80', 'Indie, Rock', TRUE),
+('Artista Pulso Digital', 'Productor de electrónica y música para videojuegos.', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80', 'Electrónica, Synthwave', TRUE),
+('Artista Ruta Alterna', 'Banda alternativa con letras introspectivas.', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80', 'Alternativo, Indie', TRUE),
+('Artista Roca Viva', 'Grupo de rock con energía y riffs poderosos.', 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&q=80', 'Rock, Pop', TRUE),
+('Artista Soul River', 'Vocalista de R&B y soul con influencia jazzística.', 'https://images.unsplash.com/photo-1504704911898-68304a7d2807?w=400&q=80', 'R&B, Soul', TRUE),
+('Artista Alma Jazz', 'Pianista de jazz moderno con exploración armónica.', 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400&q=80', 'Soul, Jazz', TRUE),
+('Artista Beat Flow', 'MC y productor de hip hop underground.', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80', 'Hip Hop, Urban', TRUE);
+
+INSERT INTO canciones (id_artista, titulo, artista, album, genero, duracion_segundos, portada_url, audio_url, descripcion, estado) VALUES
+(1, 'Horizonte Neon', 'Artista Neon Vox', 'Zeta Sessions', 'Synthwave', 214, 'https://picsum.photos/seed/neon-vox/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'Synthwave con atmósferas futuristas.', TRUE),
+(2, 'Marea Pop', 'Artista Pop Nova', 'Nova Vol. 1', 'Pop', 197, 'https://picsum.photos/seed/pop-nova/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', 'Pop contemporáneo con energía positiva.', TRUE),
+(3, 'Cumbia Eléctrica', 'Artista Ritmo Sur', 'Onda Latina', 'Latino', 231, 'https://picsum.photos/seed/ritmo-sur/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', 'Fusión de cumbia y electrónica.', TRUE),
+(4, 'Calles de Colores', 'Artista Indie Craft', 'Resplandor Indie', 'Indie', 188, 'https://picsum.photos/seed/indie-craft/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 'Indie con guitarras melancólicas.', TRUE),
+(5, 'Código Pulso', 'Artista Pulso Digital', 'Mistline', 'Electrónica', 202, 'https://picsum.photos/seed/pulso-digital/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 'Electrónica de alta energía.', TRUE),
+(6, 'Deriva Alterna', 'Artista Ruta Alterna', 'Ternario', 'Alternativo', 176, 'https://picsum.photos/seed/ruta-alterna/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', 'Alternativo introspectivo y melódico.', TRUE),
+(7, 'Riff de Acero', 'Artista Roca Viva', 'Kilo Rock', 'Rock', 220, 'https://picsum.photos/seed/roca-viva/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', 'Rock con riffs contundentes.', TRUE),
+(8, 'Río Soul', 'Artista Soul River', 'Sombras Soul', 'R&B', 204, 'https://picsum.photos/seed/soul-river/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', 'R&B suave con melodías vocales.', TRUE),
+(9, 'Camino de Jazz', 'Artista Alma Jazz', 'Vector Jazz', 'Soul', 193, 'https://picsum.photos/seed/alma-jazz/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', 'Jazz moderno con piano prominente.', TRUE),
+(10, 'Barrio Beat', 'Artista Beat Flow', 'Radio Hip', 'Hip Hop', 209, 'https://picsum.photos/seed/beat-flow/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', 'Hip hop underground con flow urbano.', TRUE),
+(1, 'Neon Drive', 'Artista Neon Vox', 'Zeta Sessions', 'Synthwave', 198, 'https://picsum.photos/seed/neon-vox2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3', 'Synthwave acelerado y electrizante.', TRUE),
+(2, 'Luna Brillante', 'Artista Pop Nova', 'Nova Vol. 2', 'Pop', 211, 'https://picsum.photos/seed/pop-nova2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3', 'Balada pop con coros pegajosos.', TRUE),
+(3, 'Salsa Urbana', 'Artista Ritmo Sur', 'Onda Latina 2', 'Latino', 225, 'https://picsum.photos/seed/ritmo-sur2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3', 'Salsa moderna con sabor urbano.', TRUE),
+(5, 'Frecuencia 404', 'Artista Pulso Digital', 'Glitch World', 'Electrónica', 189, 'https://picsum.photos/seed/pulso-digital2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3', 'Electrónica experimental con glitches.', TRUE),
+(7, 'Tormenta de Rock', 'Artista Roca Viva', 'Kilo Rock 2', 'Rock', 237, 'https://picsum.photos/seed/roca-viva2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3', 'Rock intenso con solos de guitarra.', TRUE),
+(8, 'Midnight Soul', 'Artista Soul River', 'Deep River', 'R&B', 218, 'https://picsum.photos/seed/soul-river2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3', 'R&B nocturno y sensual.', TRUE),
+(10, 'Flow Nocturno', 'Artista Beat Flow', 'Underground', 'Hip Hop', 195, 'https://picsum.photos/seed/beat-flow2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3', 'Hip hop con flow lírico y producción oscura.', TRUE);

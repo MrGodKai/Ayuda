@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./Login.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONTRASENA_SEGURA_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,72}$/;
@@ -54,6 +54,16 @@ function obtenerConfigModo(modo) {
     boton: "Iniciar sesión",
     botonCargando: "Ingresando...",
   };
+}
+
+function normalizarErrorRed(error, mensajePorDefecto) {
+  const mensaje = String(error?.message || "");
+
+  if (/Failed to fetch/i.test(mensaje)) {
+    return "No se pudo conectar con el backend. Inicia el servidor backend y revisa la configuración de API.";
+  }
+
+  return mensaje || mensajePorDefecto;
 }
 
 function Login({ onLogin }) {
@@ -281,7 +291,12 @@ function Login({ onLogin }) {
       sessionStorage.setItem("usuario", JSON.stringify(datos.usuario));
       onLogin(datos.usuario);
     } catch (error) {
-      setMensajeError(error.message);
+      setMensajeError(
+        normalizarErrorRed(
+          error,
+          "No se pudo completar la solicitud."
+        )
+      );
     } finally {
       setCargando(false);
     }

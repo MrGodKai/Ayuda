@@ -4,7 +4,7 @@ import Login from "./components/Login";
 import PerfilArtista from "./components/PerfilArtista";
 import GestionCanciones from "./components/GestionCanciones";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 const INTERVALO_ACTUALIZACION_POPULARES_MS = 60 * 1000;
 const CONTRASENA_SEGURA_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,72}$/;
@@ -14,30 +14,13 @@ const AUDIO_SAMPLES = [
   "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
 ];
 
-const playlistsMock = [
-  { id: "mock-1", titulo: "Por definir", descripcion: "Por definir", color: "#fdfdfd" },
-  { id: "mock-2", titulo: "Por definir", descripcion: "Por definir", color: "#f5f5f5" },
-  { id: "mock-3", titulo: "Por definir", descripcion: "Por definir", color: "#ffffff" },
-];
-
-const playlistSongsMock = [
-  { id: 1, titulo: "Canción Uno", artista: "Artista A", album: "Álbum A", duracion: "3:12" },
-  { id: 2, titulo: "Canción Dos", artista: "Artista B", album: "Álbum B", duracion: "4:01" },
-  { id: 3, titulo: "Canción Tres", artista: "Artista C", album: "Álbum C", duracion: "2:48" },
-  { id: 4, titulo: "Canción Cuatro", artista: "Artista D", album: "Álbum D", duracion: "3:35" },
-  { id: 5, titulo: "Canción Cinco", artista: "Artista E", album: "Álbum E", duracion: "3:59" },
-];
-
 const FOTO_ARTISTA_BLANCA =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-hidden="true"><rect width="120" height="120" rx="24" fill="#ffffff"/><circle cx="60" cy="50" r="18" fill="#f2f2f2" stroke="#d9d9d9" stroke-width="3"/><path d="M30 96c6-18 21-26 30-26s24 8 30 26" fill="#f2f2f2" stroke="#d9d9d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   );
 
-const artistasMock = ["1", "2", "3", "4", "5"];
 const PLAYER_PLAYLIST_MENU_ID = "player-current-song";
-
-const artistasCatalogo = [];
 
 function obtenerUsuarioGuardado() {
   const token =
@@ -93,6 +76,87 @@ function obtenerFotoArtista(foto) {
   return resolverUrlImagen(foto) || FOTO_ARTISTA_BLANCA;
 }
 
+function normalizarClaveTexto(valor) {
+  return String(valor || "").trim().toLowerCase();
+}
+
+function obtenerPortadaCancionDirecta(cancion) {
+  const portada = String(
+    cancion?.portada ||
+      cancion?.portadaUrl ||
+      cancion?.portada_url ||
+      ""
+  ).trim();
+
+  return portada || null;
+}
+
+function obtenerPortadaCancion(cancion, fallback = {}) {
+  const portadaDirecta = obtenerPortadaCancionDirecta(cancion);
+
+  if (portadaDirecta) {
+    return portadaDirecta;
+  }
+
+  const artista = normalizarClaveTexto(cancion?.artista);
+  const album = normalizarClaveTexto(cancion?.album);
+  const claveArtistaAlbum = artista && album ? `${artista}::${album}` : "";
+
+  if (claveArtistaAlbum && fallback.portadaPorArtistaAlbum?.has(claveArtistaAlbum)) {
+    return fallback.portadaPorArtistaAlbum.get(claveArtistaAlbum);
+  }
+
+  if (album && fallback.portadaPorAlbum?.has(album)) {
+    return fallback.portadaPorAlbum.get(album);
+  }
+
+  if (artista && fallback.portadaPorArtista?.has(artista)) {
+    return fallback.portadaPorArtista.get(artista);
+  }
+
+  return null;
+}
+
+function obtenerClaseCover(baseClass, cancion, resolverPortada = obtenerPortadaCancion) {
+  return `${baseClass}${resolverPortada(cancion) ? " cover-with-image" : ""}`;
+}
+
+function obtenerEstiloCover(cancion, resolverPortada = obtenerPortadaCancion) {
+  const portada = resolverPortada(cancion);
+
+  if (!portada) {
+    return undefined;
+  }
+
+  return {
+    backgroundImage: `url("${portada}")`,
+  };
+}
+
+function normalizarErrorRed(error, mensajePorDefecto) {
+  const mensaje = String(error?.message || "");
+
+  if (/Failed to fetch/i.test(mensaje)) {
+    return "No se pudo conectar con el backend. Inicia el servidor backend y verifica VITE_API_URL o el proxy de Vite.";
+  }
+
+  return mensaje || mensajePorDefecto;
+}
+
+async function leerJsonSeguro(respuesta) {
+  const texto = await respuesta.text();
+
+  if (!texto) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(texto);
+  } catch {
+    return {};
+  }
+}
+
 function App() {
   const [usuario, setUsuario] = useState(obtenerUsuarioGuardado);
   const [vistaActiva, setVistaActiva] = useState("inicio");
@@ -127,6 +191,7 @@ function App() {
     artista: "M83",
     album: "Hurry Up, We're Dreaming",
     audioUrl: AUDIO_SAMPLES[0],
+    portada: null,
   });
   const [reproduciendo, setReproduciendo] = useState(false);
   const [progreso, setProgreso] = useState(0);
@@ -150,6 +215,21 @@ function App() {
   const [favoritos, setFavoritos] = useState([]);
   const [cargandoFavoritos, setCargandoFavoritos] = useState(false);
   const [errorFavoritos, setErrorFavoritos] = useState("");
+  const [siguiendo, setSiguiendo] = useState([]);
+  const [seguidores, setSeguidores] = useState([]);
+  const [tabSeguidores, setTabSeguidores] = useState(null);
+  const [origenComunidad, setOrigenComunidad] = useState(null);
+  const [busquedaUsuariosSeguidores, setBusquedaUsuariosSeguidores] = useState("");
+  const [usuariosSugeridosSeguidores, setUsuariosSugeridosSeguidores] = useState([]);
+  const [cargandoSeguidores, setCargandoSeguidores] = useState(false);
+  const [cargandoBusquedaSeguidores, setCargandoBusquedaSeguidores] = useState(false);
+  const [mensajeSeguidores, setMensajeSeguidores] = useState("");
+  const [errorSeguidores, setErrorSeguidores] = useState("");
+  const [perfilAmigo, setPerfilAmigo] = useState(null);
+  const [cargandoPerfilAmigo, setCargandoPerfilAmigo] = useState(false);
+  const [errorPerfilAmigo, setErrorPerfilAmigo] = useState("");
+  const [perfilPrivado, setPerfilPrivado] = useState(false);
+  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
   const [recientesBusqueda, setRecientesBusqueda] = useState({
     canciones: [],
     artistas: [],
@@ -187,6 +267,58 @@ function App() {
   );
 
   const miPlaylist = playlistActiva?.canciones || [];
+
+  const fallbackPortadasCancion = useMemo(() => {
+    const portadaPorArtista = new Map();
+    const portadaPorAlbum = new Map();
+    const portadaPorArtistaAlbum = new Map();
+
+    artistasCatalogo.forEach((artista) => {
+      const claveArtista = normalizarClaveTexto(artista.nombre);
+
+      if (!claveArtista) {
+        return;
+      }
+
+      const foto = obtenerFotoArtista(artista.foto);
+
+      if (foto) {
+        portadaPorArtista.set(claveArtista, foto);
+      }
+    });
+
+    cancionesPopulares.forEach((cancion) => {
+      const portada = obtenerPortadaCancionDirecta(cancion);
+
+      if (!portada) {
+        return;
+      }
+
+      const claveArtista = normalizarClaveTexto(cancion.artista);
+      const claveAlbum = normalizarClaveTexto(cancion.album);
+
+      if (claveArtista && claveAlbum) {
+        portadaPorArtistaAlbum.set(`${claveArtista}::${claveAlbum}`, portada);
+      }
+
+      if (claveAlbum && !portadaPorAlbum.has(claveAlbum)) {
+        portadaPorAlbum.set(claveAlbum, portada);
+      }
+
+      if (claveArtista && !portadaPorArtista.has(claveArtista)) {
+        portadaPorArtista.set(claveArtista, portada);
+      }
+    });
+
+    return {
+      portadaPorArtista,
+      portadaPorAlbum,
+      portadaPorArtistaAlbum,
+    };
+  }, [artistasCatalogo, cancionesPopulares]);
+
+  const obtenerPortadaCancionResuelta = (cancion) =>
+    obtenerPortadaCancion(cancion, fallbackPortadasCancion);
 
   const cancionesRecientesSugeridas = useMemo(() => {
     const vistos = new Set();
@@ -243,6 +375,96 @@ function App() {
 
     return salida.slice(0, 6);
   }, [recientesBusqueda.artistas, historialReproducciones]);
+
+  const cancionesContinuarEscuchando = useMemo(
+    () => cancionesRecientesSugeridas.slice(0, 6),
+    [cancionesRecientesSugeridas]
+  );
+
+  const artistasRecomendados = useMemo(() => {
+    const normalizarNombre = (valor) =>
+      String(valor || "").trim().toLowerCase();
+
+    const catalogoPorNombre = new Map(
+      artistasCatalogo.map((artista) => [normalizarNombre(artista.nombre), artista])
+    );
+
+    const vistos = new Set();
+    const salida = [];
+
+    artistasRecientesSugeridos.forEach((nombre) => {
+      const clave = normalizarNombre(nombre);
+
+      if (!clave || vistos.has(clave)) {
+        return;
+      }
+
+      vistos.add(clave);
+      salida.push(
+        catalogoPorNombre.get(clave) || {
+          id: `recomendado-${clave}`,
+          nombre,
+          foto: FOTO_ARTISTA_BLANCA,
+        }
+      );
+    });
+
+    artistasCatalogo.forEach((artista) => {
+      const clave = normalizarNombre(artista.nombre);
+
+      if (!clave || vistos.has(clave)) {
+        return;
+      }
+
+      vistos.add(clave);
+      salida.push(artista);
+    });
+
+    return salida.slice(0, 5);
+  }, [artistasRecientesSugeridos, artistasCatalogo]);
+
+  const artistasPopularesInicio = useMemo(() => {
+    const normalizarNombre = (valor) =>
+      String(valor || "").trim().toLowerCase();
+
+    const catalogoPorNombre = new Map(
+      artistasCatalogo.map((artista) => [normalizarNombre(artista.nombre), artista])
+    );
+
+    const vistos = new Set();
+    const salida = [];
+
+    cancionesPopulares.forEach((cancion) => {
+      const nombre = String(cancion?.artista || "").trim();
+      const clave = normalizarNombre(nombre);
+
+      if (!clave || vistos.has(clave)) {
+        return;
+      }
+
+      vistos.add(clave);
+      salida.push(
+        catalogoPorNombre.get(clave) || {
+          id: `popular-${clave}`,
+          nombre,
+          foto: FOTO_ARTISTA_BLANCA,
+        }
+      );
+    });
+
+    artistasCatalogo.forEach((artista) => {
+      const clave = normalizarNombre(artista.nombre);
+
+      if (!clave || vistos.has(clave)) {
+        return;
+      }
+
+      vistos.add(clave);
+      salida.push(artista);
+    });
+
+    return salida.slice(0, 5);
+  }, [cancionesPopulares, artistasCatalogo]);
 
   const resumenPerfil = useMemo(() => {
     const totalCancionesEnPlaylists = playlistsUsuario.reduce(
@@ -396,7 +618,7 @@ function App() {
       try {
         setCargandoArtistas(true);
         const respuesta = await fetch(`${API_URL}/artistas`);
-        const datos = await respuesta.json();
+        const datos = await leerJsonSeguro(respuesta);
 
         if (!respuesta.ok) {
           throw new Error(datos.mensaje || "No se pudo cargar el catálogo.");
@@ -427,6 +649,17 @@ function App() {
     };
   };
 
+  const manejarSesionExpirada = (respuesta) => {
+    if (respuesta.status !== 401 && respuesta.status !== 403) {
+      return false;
+    }
+
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("usuario");
+    setUsuario(null);
+    return true;
+  };
+
   const cargarCancionesPopulares = async () => {
   const headers = obtenerHeadersAutenticados();
 
@@ -448,7 +681,7 @@ function App() {
       }
     );
 
-    const datos = await respuesta.json();
+    const datos = await leerJsonSeguro(respuesta);
 
     /*
      * Si la sesión expiró o la cuenta ya no
@@ -480,8 +713,10 @@ function App() {
     setCancionesPopulares([]);
 
     setErrorPopulares(
-      error.message ||
+      normalizarErrorRed(
+        error,
         "No se pudieron cargar las canciones populares."
+      )
     );
   } finally {
     setCargandoPopulares(false);
@@ -523,7 +758,7 @@ function App() {
         headers,
       });
 
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo cargar el historial.");
@@ -531,7 +766,12 @@ function App() {
 
       setHistorialReproducciones(datos.historial || []);
     } catch (error) {
-      setErrorHistorial(error.message || "No se pudo cargar el historial.");
+      setErrorHistorial(
+        normalizarErrorRed(
+          error,
+          "No se pudo cargar el historial."
+        )
+      );
       setHistorialReproducciones([]);
     } finally {
       setCargandoHistorial(false);
@@ -574,7 +814,7 @@ function App() {
       setErrorFavoritos("");
 
       const respuesta = await fetch(`${API_URL}/favoritos`, { headers });
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudieron cargar tus favoritos.");
@@ -582,7 +822,12 @@ function App() {
 
       setFavoritos(datos.favoritos || []);
     } catch (error) {
-      setErrorFavoritos(error.message || "No se pudieron cargar tus favoritos.");
+      setErrorFavoritos(
+        normalizarErrorRed(
+          error,
+          "No se pudieron cargar tus favoritos."
+        )
+      );
       setFavoritos([]);
     } finally {
       setCargandoFavoritos(false);
@@ -609,7 +854,7 @@ function App() {
         }),
       });
 
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo guardar en favoritos.");
@@ -622,7 +867,12 @@ function App() {
         });
       }
     } catch (error) {
-      setErrorFavoritos(error.message || "No se pudo guardar en favoritos.");
+      setErrorFavoritos(
+        normalizarErrorRed(
+          error,
+          "No se pudo guardar en favoritos."
+        )
+      );
     }
   };
 
@@ -639,7 +889,7 @@ function App() {
         headers,
       });
 
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo quitar de favoritos.");
@@ -647,7 +897,12 @@ function App() {
 
       setFavoritos((anterior) => anterior.filter((item) => item.id !== idFavorito));
     } catch (error) {
-      setErrorFavoritos(error.message || "No se pudo quitar de favoritos.");
+      setErrorFavoritos(
+        normalizarErrorRed(
+          error,
+          "No se pudo quitar de favoritos."
+        )
+      );
     }
   };
 
@@ -681,7 +936,7 @@ function App() {
         }),
       });
 
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         return;
@@ -709,13 +964,18 @@ function App() {
       });
 
       if (!respuesta.ok) {
-        const datos = await respuesta.json();
+        const datos = await leerJsonSeguro(respuesta);
         throw new Error(datos.mensaje || "No se pudo eliminar el registro.");
       }
 
       setHistorialReproducciones((anterior) => anterior.filter((item) => item.id !== idRegistro));
     } catch (error) {
-      setErrorHistorial(error.message || "No se pudo eliminar el registro.");
+      setErrorHistorial(
+        normalizarErrorRed(
+          error,
+          "No se pudo eliminar el registro."
+        )
+      );
     }
   };
 
@@ -735,7 +995,7 @@ function App() {
         headers,
       });
 
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo limpiar el historial.");
@@ -743,9 +1003,226 @@ function App() {
 
       setHistorialReproducciones([]);
     } catch (error) {
-      setErrorHistorial(error.message || "No se pudo limpiar el historial.");
+      setErrorHistorial(
+        normalizarErrorRed(
+          error,
+          "No se pudo limpiar el historial."
+        )
+      );
     } finally {
       setLimpiandoHistorial(false);
+    }
+  };
+
+  const cargarRedSeguidores = async () => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!headers) {
+      setSiguiendo([]);
+      setSeguidores([]);
+      return;
+    }
+
+    const respuesta = await fetch(`${API_URL}/amistades`, {
+      method: "GET",
+      headers,
+    });
+
+    if (manejarSesionExpirada(respuesta)) {
+      return;
+    }
+
+    const datos = await leerJsonSeguro(respuesta);
+
+    if (!respuesta.ok) {
+      throw new Error(datos.mensaje || "No se pudo cargar tu red de seguidores.");
+    }
+
+    setSiguiendo(Array.isArray(datos.siguiendo) ? datos.siguiendo : []);
+    setSeguidores(Array.isArray(datos.seguidores) ? datos.seguidores : []);
+  };
+
+  const cargarModuloSeguidores = async () => {
+    try {
+      setCargandoSeguidores(true);
+      setErrorSeguidores("");
+      await cargarRedSeguidores();
+    } catch (error) {
+      setErrorSeguidores(
+        normalizarErrorRed(
+          error,
+          "No se pudo cargar el apartado de seguidores."
+        )
+      );
+    } finally {
+      setCargandoSeguidores(false);
+    }
+  };
+
+  const verPerfilAmigo = async (idUsuario) => {
+    const headers = obtenerHeadersAutenticados();
+    if (!headers) return;
+
+    if (perfilAmigo?.usuario?.id === idUsuario) {
+      setPerfilAmigo(null);
+      return;
+    }
+
+    try {
+      setCargandoPerfilAmigo(true);
+      setErrorPerfilAmigo("");
+      setPerfilAmigo(null);
+
+      const respuesta = await fetch(`${API_URL}/amistades/perfil/${idUsuario}`, { headers });
+
+      if (manejarSesionExpirada(respuesta)) return;
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo cargar el perfil.");
+      }
+
+      setPerfilAmigo(datos);
+    } catch (error) {
+      setErrorPerfilAmigo(normalizarErrorRed(error, "No se pudo cargar el perfil de este usuario."));
+    } finally {
+      setCargandoPerfilAmigo(false);
+    }
+  };
+
+  const cambiarPrivacidadPerfil = async (privado) => {
+    const headers = obtenerHeadersAutenticados();
+    if (!headers) return;
+
+    try {
+      const respuesta = await fetch(`${API_URL}/auth/privacidad`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ privado }),
+      });
+
+      if (manejarSesionExpirada(respuesta)) return;
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) throw new Error(datos.mensaje || "Error al actualizar privacidad.");
+
+      setPerfilPrivado(datos.perfilPrivado);
+    } catch (error) {
+      setErrorPerfil(normalizarErrorRed(error, "No se pudo actualizar la privacidad."));
+    }
+  };
+
+  const buscarUsuariosParaSeguir = async (termino) => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!headers) {
+      setUsuariosSugeridosSeguidores([]);
+      return;
+    }
+
+    const respuesta = await fetch(
+      `${API_URL}/amistades/usuarios?query=${encodeURIComponent(termino)}`,
+      {
+        method: "GET",
+        headers,
+      }
+    );
+
+    if (manejarSesionExpirada(respuesta)) {
+      return;
+    }
+
+    const datos = await leerJsonSeguro(respuesta);
+
+    if (!respuesta.ok) {
+      throw new Error(datos.mensaje || "No se pudieron buscar usuarios.");
+    }
+
+    setUsuariosSugeridosSeguidores(Array.isArray(datos.usuarios) ? datos.usuarios : []);
+  };
+
+  const seguirUsuario = async (idUsuario) => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!headers) {
+      return;
+    }
+
+    try {
+      setErrorSeguidores("");
+      setMensajeSeguidores("");
+
+      const respuesta = await fetch(`${API_URL}/amistades/follow`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ idUsuario }),
+      });
+
+      if (manejarSesionExpirada(respuesta)) {
+        return;
+      }
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo seguir al usuario.");
+      }
+
+      setMensajeSeguidores(datos.mensaje || "Ahora sigues a este usuario.");
+      setBusquedaUsuariosSeguidores("");
+      setUsuariosSugeridosSeguidores([]);
+      setTimeout(() => setMensajeSeguidores(""), 3500);
+      await cargarRedSeguidores();
+    } catch (error) {
+      setErrorSeguidores(
+        normalizarErrorRed(
+          error,
+          "No se pudo seguir al usuario."
+        )
+      );
+      setTimeout(() => setErrorSeguidores(""), 3500);
+    }
+  };
+
+  const dejarDeSeguirUsuario = async (idUsuario) => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!headers) {
+      return;
+    }
+
+    try {
+      setErrorSeguidores("");
+      setMensajeSeguidores("");
+
+      const respuesta = await fetch(`${API_URL}/amistades/follow/${idUsuario}`, {
+        method: "DELETE",
+        headers,
+      });
+
+      if (manejarSesionExpirada(respuesta)) {
+        return;
+      }
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo dejar de seguir al usuario.");
+      }
+
+      setMensajeSeguidores(datos.mensaje || "Has dejado de seguir a este usuario.");
+      setTimeout(() => setMensajeSeguidores(""), 3500);
+      await cargarRedSeguidores();
+    } catch (error) {
+      setErrorSeguidores(
+        normalizarErrorRed(
+          error,
+          "No se pudo dejar de seguir al usuario."
+        )
+      );
+      setTimeout(() => setErrorSeguidores(""), 3500);
     }
   };
 
@@ -757,6 +1234,54 @@ function App() {
     cargarHistorial();
     cargarFavoritos();
   }, [usuario?.id]);
+
+  useEffect(() => {
+    if (!usuario?.id || vistaActiva !== "perfil") {
+      return;
+    }
+
+    cargarModuloSeguidores();
+  }, [usuario?.id, vistaActiva]);
+
+  useEffect(() => {
+    if (!usuario?.id || vistaActiva !== "perfil") {
+      return;
+    }
+
+    const termino = busquedaUsuariosSeguidores.trim();
+
+    if (!termino) {
+      setUsuariosSugeridosSeguidores([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      const headers = obtenerHeadersAutenticados();
+
+      if (!headers) {
+        return;
+      }
+
+      try {
+        setCargandoBusquedaSeguidores(true);
+        await buscarUsuariosParaSeguir(termino);
+      } catch (error) {
+        setErrorSeguidores(
+          normalizarErrorRed(
+            error,
+            "No se pudieron buscar usuarios."
+          )
+        );
+        setUsuariosSugeridosSeguidores([]);
+      } finally {
+        setCargandoBusquedaSeguidores(false);
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [usuario?.id, vistaActiva, busquedaUsuariosSeguidores]);
 
   useEffect(() => {
     if (!claveRecientesBusqueda) {
@@ -857,7 +1382,7 @@ function App() {
         },
       });
 
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (
   respuesta.status === 401 ||
@@ -881,6 +1406,7 @@ function App() {
 
       sessionStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
       setUsuario(usuarioActualizado);
+      setPerfilPrivado(Boolean(datos.usuario?.perfilPrivado));
       sincronizarFormulario(usuarioActualizado);
     } catch (error) {
       setErrorPerfil(error.message);
@@ -941,7 +1467,7 @@ function App() {
 }),
       });
 
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo guardar el perfil.");
@@ -1006,7 +1532,7 @@ function App() {
       try {
         setCargandoBusqueda(true);
         const respuesta = await fetch(`${API_URL}/busqueda?query=${encodeURIComponent(termino)}`);
-        const datos = await respuesta.json();
+        const datos = await leerJsonSeguro(respuesta);
 
         setResultadosBusqueda({
           canciones: datos.canciones || [],
@@ -1071,6 +1597,8 @@ function App() {
   const seleccionarCancion = (cancion) => {
     registrarCancionReciente(cancion);
     const audioUrl = cancion.audioUrl || AUDIO_SAMPLES[(cancion.id || 1) % AUDIO_SAMPLES.length];
+    const portada = obtenerPortadaCancionResuelta(cancion);
+
     setCancionActual({
       id: cancion.id || Math.random(),
       titulo: cancion.titulo || "Canción desconocida",
@@ -1078,6 +1606,7 @@ function App() {
       album: cancion.album || "Álbum desconocido",
       audioUrl: audioUrl,
       duracion: cancion.duracion || 0,
+      portada,
     });
     setMensajeReproductor("");
     setReproduciendo(false);
@@ -1092,7 +1621,7 @@ function App() {
     try {
       setCargandoArtistas(true);
       const respuesta = await fetch(`${API_URL}/artistas/${encodeURIComponent(artistaNombre)}`);
-      const datos = await respuesta.json();
+      const datos = await leerJsonSeguro(respuesta);
 
       if (!respuesta.ok) {
         throw new Error(datos.mensaje || "No se pudo abrir el perfil del artista.");
@@ -1383,6 +1912,12 @@ function App() {
     setErrorHistorial("");
     setFavoritos([]);
     setErrorFavoritos("");
+    setSiguiendo([]);
+    setSeguidores([]);
+    setUsuariosSugeridosSeguidores([]);
+    setBusquedaUsuariosSeguidores("");
+    setMensajeSeguidores("");
+    setErrorSeguidores("");
     setPlaylistsUsuario([]);
     setPlaylistSeleccionadaId(null);
     setMenuAccionesCancionId(null);
@@ -1425,9 +1960,6 @@ function App() {
           >
             Tu biblioteca
           </button>
-          <button type="button" className="sidebar-link">
-            Amigos
-          </button>
           <button
             type="button"
             className={`sidebar-link ${vistaActiva === "perfil" ? "active" : ""}`}
@@ -1456,8 +1988,13 @@ function App() {
         </nav>
       </aside>
 
-      <section className="content-area" id={vistaActiva === "perfil" ? "perfil" : "inicio"}>
+      <section
+        className={`content-area content-area--${vistaActiva}`}
+        id={vistaActiva === "perfil" ? "perfil" : "inicio"}
+      >
         <div className="search-area" ref={searchAreaRef}>
+          {vistaActiva !== "perfil" && (
+          <>
           <header className="topbar">
             <div className="logo-pill">iStream</div>
             <input
@@ -1485,6 +2022,10 @@ function App() {
               type="button"
               className={`top-avatar ${fotoPerfilUsuario ? "top-avatar--photo" : ""}`}
               aria-label="Perfil"
+              onClick={() => {
+                setBusquedaAbierta(false);
+                cambiarVista("perfil");
+              }}
             >
               {fotoPerfilUsuario ? (
                 <img src={fotoPerfilUsuario} alt="Foto de perfil" />
@@ -1657,12 +2198,17 @@ function App() {
               )}
             </section>
           )}
+          </>
+          )}
         </div>
 
         {vistaActiva === "biblioteca" ? (
           <section className="section-block library-shell">
             <div className="library-hero">
-              <div className="playlist-cover"></div>
+              <div
+                className={obtenerClaseCover("playlist-cover", cancionActual, obtenerPortadaCancionResuelta)}
+                style={obtenerEstiloCover(cancionActual, obtenerPortadaCancionResuelta)}
+              ></div>
               <div className="library-hero-meta">
                 <span className="section-label">TU BIBLIOTECA</span>
                 <h2>{playlistActiva ? playlistActiva.nombre : "Crea tu playlist"}</h2>
@@ -1780,7 +2326,10 @@ function App() {
                           <td>{index + 1}</td>
                           <td>
                             <div className="song-cell">
-                              <div className="mini-cover"></div>
+                              <div
+                                className={obtenerClaseCover("mini-cover", song, obtenerPortadaCancionResuelta)}
+                                style={obtenerEstiloCover(song, obtenerPortadaCancionResuelta)}
+                              ></div>
                               <div>
                                 <div className="song-title-row">{song.titulo}</div>
                                 <div className="song-artist-row">{song.artista}</div>
@@ -1889,7 +2438,10 @@ function App() {
         ) : vistaActiva === "playlist" ? (
           <section className="playlist-screen">
             <div className="playlist-header">
-              <div className="playlist-cover"></div>
+              <div
+                className={obtenerClaseCover("playlist-cover", cancionActual, obtenerPortadaCancionResuelta)}
+                style={obtenerEstiloCover(cancionActual, obtenerPortadaCancionResuelta)}
+              ></div>
               <div className="playlist-meta">
                 <span className="section-label">PLAYLIST</span>
                 <h2>{playlistActiva?.nombre || "Mi Playlist"}</h2>
@@ -1928,7 +2480,10 @@ function App() {
                       <td>{index + 1}</td>
                       <td>
                         <div className="song-cell">
-                          <div className="mini-cover"></div>
+                          <div
+                            className={obtenerClaseCover("mini-cover", song, obtenerPortadaCancionResuelta)}
+                            style={obtenerEstiloCover(song, obtenerPortadaCancionResuelta)}
+                          ></div>
                           <div>
                             <div className="song-title-row">{song.titulo}</div>
                             <div className="song-artist-row">{song.artista}</div>
@@ -1968,7 +2523,10 @@ function App() {
         ) : vistaActiva === "player" ? (
           <section className="player-screen">
             <div className="backlink" onClick={minimizarPlayer}>← Volver al inicio</div>
-            <div className="player-cover"></div>
+            <div
+              className={obtenerClaseCover("player-cover", cancionActual, obtenerPortadaCancionResuelta)}
+              style={obtenerEstiloCover(cancionActual, obtenerPortadaCancionResuelta)}
+            ></div>
             <div className="player-title">{cancionActual.titulo}</div>
             <div className="player-artist">
               {cancionActual.artista} •{" "}
@@ -2141,6 +2699,15 @@ function App() {
         ) : vistaActiva === "perfil" ? (
           <section className="profile-section">
             <article className="profile-card profile-hero-card">
+              <button
+                type="button"
+                className={`profile-settings-btn${mostrarConfiguracion ? " profile-settings-btn--active" : ""}`}
+                onClick={() => setMostrarConfiguracion((v) => !v)}
+                aria-label="Configuración de perfil"
+                title="Configuración"
+              >
+                ⚙
+              </button>
               <div className="profile-head">
                 <div
                   className={`preview-avatar profile-avatar-xl ${
@@ -2165,8 +2732,225 @@ function App() {
                     <span>{usuario.rol || "Usuario"}</span>
                     <span>{resumenPerfil.reproduccionesUltimos7Dias} reproducciones en los ultimos 7 dias</span>
                   </div>
+                  <div className="profile-follow-counts">
+                    <button
+                      type="button"
+                      className={`sp-count-link profile-count-link${tabSeguidores === "seguidores" ? " profile-count-link--active" : ""}`}
+                      onClick={() => { if (tabSeguidores === "seguidores") { setTabSeguidores(null); } else { setTabSeguidores("seguidores"); setOrigenComunidad("seguidores"); } }}
+                    >
+                      <strong>{seguidores.length}</strong> seguidores
+                    </button>
+                    <span className="sp-count-sep">·</span>
+                    <button
+                      type="button"
+                      className={`sp-count-link profile-count-link${tabSeguidores === "siguiendo" ? " profile-count-link--active" : ""}`}
+                      onClick={() => { if (tabSeguidores === "siguiendo") { setTabSeguidores(null); } else { setTabSeguidores("siguiendo"); setOrigenComunidad("siguiendo"); } }}
+                    >
+                      <strong>{siguiendo.length}</strong> siguiendo
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {tabSeguidores !== null && (
+                <div className="sp-inline-community">
+                  <div className="sp-inline-tabs">
+                    <button
+                      type="button"
+                      className={`sp-tab-pill${tabSeguidores === "descubrir" ? " sp-tab-pill--active" : ""}`}
+                      onClick={() => setTabSeguidores("descubrir")}
+                    >
+                      Descubrir
+                    </button>
+                    {origenComunidad === "seguidores" && (
+                      <button
+                        type="button"
+                        className={`sp-tab-pill${tabSeguidores === "seguidores" ? " sp-tab-pill--active" : ""}`}
+                        onClick={() => setTabSeguidores("seguidores")}
+                      >
+                        Te siguen
+                        {seguidores.length > 0 && <span className="sp-tab-count">{seguidores.length}</span>}
+                      </button>
+                    )}
+                    {origenComunidad === "siguiendo" && (
+                      <button
+                        type="button"
+                        className={`sp-tab-pill${tabSeguidores === "siguiendo" ? " sp-tab-pill--active" : ""}`}
+                        onClick={() => setTabSeguidores("siguiendo")}
+                      >
+                        Siguiendo
+                        {siguiendo.length > 0 && <span className="sp-tab-count">{siguiendo.length}</span>}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="sp-tab-close"
+                      onClick={() => setTabSeguidores(null)}
+                      aria-label="Cerrar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {tabSeguidores === "descubrir" && (
+                    <div className="sp-follow-pane">
+                      <input
+                        className="search-box sp-follow-search"
+                        type="search"
+                        value={busquedaUsuariosSeguidores}
+                        onChange={(event) => setBusquedaUsuariosSeguidores(event.target.value)}
+                        placeholder="Busca por nombre o correo..."
+                      />
+                      {cargandoBusquedaSeguidores && <p className="sp-follow-empty">Buscando usuarios...</p>}
+                      {!cargandoBusquedaSeguidores && busquedaUsuariosSeguidores.trim() && usuariosSugeridosSeguidores.length === 0 && (
+                        <p className="sp-follow-empty">No se encontraron usuarios para esa búsqueda.</p>
+                      )}
+                      {!busquedaUsuariosSeguidores.trim() && (
+                        <p className="sp-follow-empty">Busca por nombre o correo para empezar a seguir perfiles.</p>
+                      )}
+                      {!cargandoBusquedaSeguidores && usuariosSugeridosSeguidores.length > 0 && (
+                        <ul className="sp-user-list">
+                          {usuariosSugeridosSeguidores.map((u) => (
+                            <li key={u.id} className="sp-user-row">
+                              <span className="sp-avatar">{String(u.nombre || "U").charAt(0).toUpperCase()}</span>
+                              <div className="sp-user-info">
+                                <strong>{u.nombre}</strong>
+                                <span>{u.correo}</span>
+                                {u.teSigue && <small className="sp-mutual">También te sigue</small>}
+                              </div>
+                              {u.yaLoSigues ? (
+                                <button type="button" className="sp-follow-btn sp-follow-btn--following" onClick={() => dejarDeSeguirUsuario(u.id)}>
+                                  <span className="sp-btn-label sp-btn-following">Siguiendo</span>
+                                  <span className="sp-btn-label sp-btn-unfollow">Dejar de seguir</span>
+                                </button>
+                              ) : (
+                                <button type="button" className="sp-follow-btn" onClick={() => seguirUsuario(u.id)}>
+                                  Seguir
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {tabSeguidores === "seguidores" && (
+                    <div className="sp-follow-pane">
+                      {cargandoSeguidores && <p className="sp-follow-empty">Cargando seguidores...</p>}
+                      {!cargandoSeguidores && seguidores.length === 0 && <p className="sp-follow-empty">Aún no tienes seguidores.</p>}
+                      {!cargandoSeguidores && seguidores.length > 0 && (
+                        <ul className="sp-user-list">
+                          {seguidores.map((s) => (
+                            <li key={s.id} className={`sp-user-row sp-user-row--clickable${perfilAmigo?.usuario?.id === s.id ? " sp-user-row--active" : ""}`} onClick={() => verPerfilAmigo(s.id)} role="button" tabIndex={0}>
+                              <span className="sp-avatar">{String(s.nombre || "U").charAt(0).toUpperCase()}</span>
+                              <div className="sp-user-info">
+                                <strong>{s.nombre || "Usuario"}</strong>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {tabSeguidores === "siguiendo" && (
+                    <div className="sp-follow-pane">
+                      {cargandoSeguidores && <p className="sp-follow-empty">Cargando perfiles que sigues...</p>}
+                      {!cargandoSeguidores && siguiendo.length === 0 && <p className="sp-follow-empty">Aún no sigues a nadie.</p>}
+                      {!cargandoSeguidores && siguiendo.length > 0 && (
+                        <ul className="sp-user-list">
+                          {siguiendo.map((s) => (
+                            <li key={s.id} className={`sp-user-row${perfilAmigo?.usuario?.id === s.id ? " sp-user-row--active" : ""}`}>
+                              <button type="button" className="sp-user-clickable" onClick={() => verPerfilAmigo(s.id)}>
+                                <span className="sp-avatar">{String(s.nombre || "U").charAt(0).toUpperCase()}</span>
+                                <strong className="sp-user-name">{s.nombre}</strong>
+                              </button>
+                              <button type="button" className="sp-follow-btn sp-follow-btn--following" onClick={() => dejarDeSeguirUsuario(s.id)}>
+                                <span className="sp-btn-label sp-btn-following">Siguiendo</span>
+                                <span className="sp-btn-label sp-btn-unfollow">Dejar de seguir</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Friend profile panel */}
+                  {(cargandoPerfilAmigo || perfilAmigo || errorPerfilAmigo) && (
+                    <div className="friend-profile-panel">
+                      {cargandoPerfilAmigo && <p className="sp-follow-empty">Cargando perfil...</p>}
+                      {errorPerfilAmigo && <p className="form-error">{errorPerfilAmigo}</p>}
+                      {!cargandoPerfilAmigo && perfilAmigo && (
+                        <>
+                          <div className="fpp-hero">
+                            <div className="fpp-hero-avatar">{String(perfilAmigo.usuario.nombre || "U").charAt(0).toUpperCase()}</div>
+                            <div className="fpp-hero-identity">
+                              <p className="section-label">PERFIL</p>
+                              <h2 className="fpp-hero-name">{perfilAmigo.usuario.nombre}</h2>
+                              {perfilAmigo.mutuo && <span className="fpp-badge">Amigos mutuos</span>}
+                            </div>
+                            <button type="button" className="sp-tab-close fpp-close" onClick={() => setPerfilAmigo(null)}>✕</button>
+                          </div>
+
+                          {perfilAmigo.privado ? (
+                            <p className="fpp-private">🔒 Este perfil es privado. Solo los seguidores mutuos pueden ver su actividad.</p>
+                          ) : (
+                            <div className="fpp-sections">
+                              <div className="fpp-section">
+                                <p className="fpp-section-label">Escuchado recientemente</p>
+                                {perfilAmigo.historial.length === 0
+                                  ? <p className="sp-follow-empty">Sin actividad reciente.</p>
+                                  : <ul className="fpp-list">
+                                      {perfilAmigo.historial.map((h, i) => (
+                                        <li key={i} className="fpp-item">
+                                          <span className="fpp-item-title">{h.titulo}</span>
+                                          <span className="fpp-item-sub">{h.artista}{h.album ? ` · ${h.album}` : ""}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                }
+                              </div>
+                              <div className="fpp-section">
+                                <p className="fpp-section-label">Canciones favoritas</p>
+                                {perfilAmigo.favoritos.length === 0
+                                  ? <p className="sp-follow-empty">Sin favoritos.</p>
+                                  : <ul className="fpp-list">
+                                      {perfilAmigo.favoritos.map((f, i) => (
+                                        <li key={i} className="fpp-item">
+                                          <span className="fpp-item-title">{f.titulo}</span>
+                                          <span className="fpp-item-sub">{f.artista}{f.album ? ` · ${f.album}` : ""}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                }
+                              </div>
+                              <div className="fpp-section">
+                                <p className="fpp-section-label">Artistas más escuchados</p>
+                                {perfilAmigo.artistasFavoritos.length === 0
+                                  ? <p className="sp-follow-empty">Sin datos.</p>
+                                  : <ul className="fpp-artists">
+                                      {perfilAmigo.artistasFavoritos.map((a, i) => (
+                                        <li key={i} className="fpp-artist-pill">
+                                          <span>{a.artista}</span>
+                                          <small>{a.reproducciones} reproducciones</small>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                }
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {errorSeguidores && <p className="form-error">{errorSeguidores}</p>}
+                  {mensajeSeguidores && <p className="form-success">{mensajeSeguidores}</p>}
+                </div>
+              )}
             </article>
 
             <div className="profile-stats-grid">
@@ -2230,6 +3014,8 @@ function App() {
               </article>
 
               <div className="profile-side-column">
+                {mostrarConfiguracion && (
+                <>
                 <form className="profile-card profile-form" onSubmit={guardarPerfil}>
                   <div className="form-header">
                     <h3>Editar perfil</h3>
@@ -2266,6 +3052,21 @@ function App() {
                   <button type="submit" className="save-button" disabled={guardandoPerfil || cargandoPerfil}>
                     {guardandoPerfil ? "Guardando..." : "Guardar cambios"}
                   </button>
+
+                  <div className="privacy-toggle-row">
+                    <div className="privacy-toggle-info">
+                      <strong>Perfil privado</strong>
+                      <span>Solo seguidores mutuos pueden ver tu actividad musical.</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`privacy-toggle-btn${perfilPrivado ? " privacy-toggle-btn--on" : ""}`}
+                      onClick={() => cambiarPrivacidadPerfil(!perfilPrivado)}
+                      aria-label={perfilPrivado ? "Desactivar perfil privado" : "Activar perfil privado"}
+                    >
+                      <span className="privacy-toggle-knob" />
+                    </button>
+                  </div>
                 </form>
 
                 <button
@@ -2275,6 +3076,8 @@ function App() {
                 >
                   Cerrar sesión
                 </button>
+                </>
+                )}
               </div>
             </div>
           </section>
@@ -2352,41 +3155,108 @@ function App() {
 </div>
             <div className="section-block">
               <p className="section-label">Continuar escuchando</p>
-              <div className="tile-grid">
-                {playlistsMock.map((playlist) => (
-                  <article className="tile-card" key={playlist.id} onClick={() => cambiarVista("player")}>
-                    <div className="tile-cover" style={{ background: playlist.color }}>
-                      ♫
-                    </div>
-                    <div className="tile-title">{playlist.titulo}</div>
-                    <div className="tile-sub">{playlist.descripcion}</div>
-                  </article>
-                ))}
-              </div>
+              {cargandoHistorial && (
+                <p className="popular-status">
+                  Cargando tu actividad...
+                </p>
+              )}
+
+              {!cargandoHistorial && cancionesContinuarEscuchando.length === 0 && (
+                <p className="popular-status">
+                  Reproduce canciones y aparecerán aquí.
+                </p>
+              )}
+
+              {!cargandoHistorial && cancionesContinuarEscuchando.length > 0 && (
+                <div className="tile-grid">
+                  {cancionesContinuarEscuchando.map((cancion, indice) => (
+                    <button
+                      type="button"
+                      className="tile-card popular-song-card"
+                      key={`${cancion.titulo}-${cancion.artista}-${indice}`}
+                      onClick={() => seleccionarCancion(cancion)}
+                    >
+                      <div
+                        className={obtenerClaseCover("tile-cover", cancion, obtenerPortadaCancionResuelta)}
+                        style={obtenerEstiloCover(cancion, obtenerPortadaCancionResuelta)}
+                      />
+                      <div className="tile-title">{cancion.titulo}</div>
+                      <div className="tile-sub">{cancion.artista}</div>
+                      <div className="tile-sub">{cancion.album || "Sin álbum"}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="section-block">
               <p className="section-label">Recomendado para vos</p>
-              <div className="artist-grid">
-                {artistasMock.map((artista) => (
-                  <article className="artist-card" key={artista}>
-                    <div className="artist-circle"></div>
-                    <span>{artista}</span>
-                  </article>
-                ))}
-              </div>
+              {cargandoArtistas && artistasRecomendados.length === 0 && (
+                <p className="popular-status">
+                  Cargando recomendaciones...
+                </p>
+              )}
+
+              {!cargandoArtistas && artistasRecomendados.length === 0 && (
+                <p className="popular-status">
+                  No hay recomendaciones disponibles por ahora.
+                </p>
+              )}
+
+              {artistasRecomendados.length > 0 && (
+                <div className="artist-grid">
+                  {artistasRecomendados.map((artista) => (
+                    <article
+                      className="artist-card"
+                      key={artista.id || artista.nombre}
+                      onClick={() => abrirPerfilArtista(artista.nombre)}
+                    >
+                      <div
+                        className="artist-circle artist-circle--image"
+                        style={{
+                          backgroundImage: `url("${obtenerFotoArtista(artista.foto)}")`,
+                        }}
+                      />
+                      <span>{artista.nombre}</span>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="section-block">
               <p className="section-label">Artistas populares</p>
-              <div className="artist-grid">
-                {artistasMock.map((artista) => (
-                  <article className="artist-card" key={`popular-${artista}`}>
-                    <div className="artist-circle"></div>
-                    <span>Artista {artista}</span>
-                  </article>
-                ))}
-              </div>
+              {cargandoPopulares && artistasPopularesInicio.length === 0 && (
+                <p className="popular-status">
+                  Cargando artistas populares...
+                </p>
+              )}
+
+              {!cargandoPopulares && artistasPopularesInicio.length === 0 && (
+                <p className="popular-status">
+                  No hay artistas populares para mostrar.
+                </p>
+              )}
+
+              {artistasPopularesInicio.length > 0 && (
+                <div className="artist-grid">
+                  {artistasPopularesInicio.map((artista) => (
+                    <article
+                      className="artist-card"
+                      key={`popular-${artista.id || artista.nombre}`}
+                      onClick={() => abrirPerfilArtista(artista.nombre)}
+                    >
+                      <div
+                        className="artist-circle artist-circle--image"
+                        style={{
+                          backgroundImage: `url("${obtenerFotoArtista(artista.foto)}")`,
+                        }}
+                      />
+                      <span>{artista.nombre}</span>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -2395,7 +3265,10 @@ function App() {
           <>
             <div className="mini-player">
               <div className="mini-player-main" onClick={abrirPlayer}>
-                <div className="mini-player-cover"></div>
+                <div
+                  className={obtenerClaseCover("mini-player-cover", cancionActual, obtenerPortadaCancionResuelta)}
+                  style={obtenerEstiloCover(cancionActual, obtenerPortadaCancionResuelta)}
+                ></div>
                 <div className="mini-player-info">
                   <strong>{cancionActual.titulo}</strong>
                   <span>{cancionActual.artista}</span>

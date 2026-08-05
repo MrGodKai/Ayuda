@@ -33,6 +33,10 @@ const favoritosRoutes = require(
   "./src/routes/favoritos.routes"
 );
 
+const amistadesRoutes = require(
+  "./src/routes/amistades.routes"
+);
+
 const usuariosRoutes = require(
   "./src/routes/usuarios.routes"
 );
@@ -117,6 +121,11 @@ app.use(
 app.use(
   "/api/favoritos",
   favoritosRoutes
+);
+
+app.use(
+  "/api/amistades",
+  amistadesRoutes
 );
 
 app.use(
@@ -263,6 +272,61 @@ async function iniciarServidor() {
        )`
     );
 
+    await conexion.execute(
+      `CREATE TABLE IF NOT EXISTS relaciones_amistad (
+         id_relacion BIGINT AUTO_INCREMENT PRIMARY KEY,
+         id_usuario_emisor INT NOT NULL,
+         id_usuario_receptor INT NOT NULL,
+         id_usuario_menor INT NOT NULL,
+         id_usuario_mayor INT NOT NULL,
+         estado ENUM('pendiente', 'aceptada', 'rechazada') NOT NULL DEFAULT 'pendiente',
+         respondido_en DATETIME NULL,
+         creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+         UNIQUE KEY uk_relaciones_amistad_par (id_usuario_menor, id_usuario_mayor),
+         INDEX idx_relaciones_receptor_estado (id_usuario_receptor, estado, creado_en),
+         INDEX idx_relaciones_emisor_estado (id_usuario_emisor, estado, creado_en),
+
+         CONSTRAINT fk_relaciones_amistad_emisor
+           FOREIGN KEY (id_usuario_emisor)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE,
+
+         CONSTRAINT fk_relaciones_amistad_receptor
+           FOREIGN KEY (id_usuario_receptor)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE
+       )`
+    );
+
+    await conexion.execute(
+      `CREATE TABLE IF NOT EXISTS seguidores_usuarios (
+         id_seguimiento BIGINT AUTO_INCREMENT PRIMARY KEY,
+         id_usuario_seguidor INT NOT NULL,
+         id_usuario_seguido INT NOT NULL,
+         creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+         UNIQUE KEY uk_seguimiento_par (id_usuario_seguidor, id_usuario_seguido),
+         INDEX idx_seguidores_objetivo_fecha (id_usuario_seguido, creado_en),
+         INDEX idx_siguiendo_origen_fecha (id_usuario_seguidor, creado_en),
+
+         CONSTRAINT fk_seguidores_usuario_seguidor
+           FOREIGN KEY (id_usuario_seguidor)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE,
+
+         CONSTRAINT fk_seguidores_usuario_seguido
+           FOREIGN KEY (id_usuario_seguido)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE
+       )`
+    );
+
     const [columnasArtistas] = await conexion.execute(
       `SELECT COLUMN_NAME
        FROM information_schema.COLUMNS
@@ -316,6 +380,27 @@ async function iniciarServidor() {
     }
 
     conexion.release();
+
+    // Migraciones de columnas opcionales (idempotentes)
+    try {
+      const conn2 = await pool.getConnection();
+      const [cols] = await conn2.execute(
+        `SELECT COUNT(*) AS cnt
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = 'usuarios'
+           AND COLUMN_NAME  = 'perfil_privado'`
+      );
+      if (cols[0].cnt === 0) {
+        await conn2.execute(
+          `ALTER TABLE usuarios
+           ADD COLUMN perfil_privado BOOLEAN NOT NULL DEFAULT FALSE`
+        );
+      }
+      conn2.release();
+    } catch (migErr) {
+      console.warn("Advertencia en migración perfil_privado:", migErr.message);
+    }
 
     app.listen(PORT, () => {
       console.log(

@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const path = require("path");
+
 const express = require("express");
 const cors = require("cors");
 
@@ -81,6 +83,11 @@ app.use(
   })
 );
 
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
+
 app.get(
   "/api/health",
   (req, res) => {
@@ -152,6 +159,33 @@ async function iniciarServidor() {
       await pool.getConnection();
 
     await conexion.ping();
+
+    await conexion.execute(
+      `CREATE TABLE IF NOT EXISTS artistas (
+         id_artista INT AUTO_INCREMENT PRIMARY KEY,
+         id_usuario INT NULL,
+         nombre VARCHAR(150) NOT NULL UNIQUE,
+         biografia VARCHAR(500) NULL,
+         foto_url VARCHAR(500) NULL,
+         portada_url VARCHAR(500) NULL,
+         generos VARCHAR(255) NULL,
+         estado BOOLEAN NOT NULL DEFAULT TRUE,
+         creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+         actualizado_en TIMESTAMP
+           NOT NULL
+           DEFAULT CURRENT_TIMESTAMP
+           ON UPDATE CURRENT_TIMESTAMP,
+
+         UNIQUE KEY uk_artistas_usuario (id_usuario),
+
+         CONSTRAINT fk_artistas_usuario
+           FOREIGN KEY (id_usuario)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE SET NULL
+           ON UPDATE CASCADE
+       )`
+    );
 
     await conexion.execute(
       `CREATE TABLE IF NOT EXISTS historial_reproducciones (
@@ -228,6 +262,58 @@ async function iniciarServidor() {
            ON UPDATE CASCADE
        )`
     );
+
+    const [columnasArtistas] = await conexion.execute(
+      `SELECT COLUMN_NAME
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'artistas'
+         AND COLUMN_NAME IN ('id_usuario', 'portada_url')`
+    );
+
+    const columnasExistentes = new Set(
+      columnasArtistas.map((fila) => fila.COLUMN_NAME)
+    );
+
+    if (!columnasExistentes.has("id_usuario")) {
+      await conexion.execute(
+        `ALTER TABLE artistas
+         ADD COLUMN id_usuario INT NULL,
+         ADD UNIQUE KEY uk_artistas_usuario (id_usuario),
+         ADD CONSTRAINT fk_artistas_usuario
+           FOREIGN KEY (id_usuario)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE SET NULL
+           ON UPDATE CASCADE`
+      );
+    }
+
+    if (!columnasExistentes.has("portada_url")) {
+      await conexion.execute(
+        `ALTER TABLE artistas
+         ADD COLUMN portada_url VARCHAR(500) NULL`
+      );
+    }
+
+    const [columnasCanciones] = await conexion.execute(
+      `SELECT COLUMN_NAME
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'canciones'
+         AND COLUMN_NAME = 'id_artista'`
+    );
+
+    if (columnasCanciones.length === 0) {
+      await conexion.execute(
+        `ALTER TABLE canciones
+         ADD COLUMN id_artista INT NULL,
+         ADD CONSTRAINT fk_canciones_artista
+           FOREIGN KEY (id_artista)
+           REFERENCES artistas(id_artista)
+           ON DELETE SET NULL
+           ON UPDATE CASCADE`
+      );
+    }
 
     conexion.release();
 

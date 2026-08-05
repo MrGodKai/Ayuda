@@ -1919,3 +1919,181 @@
     flex-direction: column;
   }
 }
+
+.artist-admin-cover-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.artist-admin-cover-preview {
+  position: relative;
+  height: 180px;
+  background: linear-gradient(120deg, #3d3d42, #58585f);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 16px;
+}
+
+.artist-admin-identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px 24px;
+  margin-top: -46px;
+}
+
+.artist-admin-avatar {
+  position: relative;
+  border: 3px solid var(--surface, #17171a);
+  flex-shrink: 0;
+}
+
+.artist-admin-upload-button {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  white-space: nowrap;
+}
+
+.artist-admin-upload-button:hover {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.artist-admin-upload-button--avatar {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.artist-admin-form .form-header {
+  margin-bottom: 4px;
+}
+
+.artist-admin-bio-field {
+  margin-top: 16px;
+}
+
+.artist-admin-bio-field textarea {
+  width: 100%;
+  padding: 15px 16px;
+  border-radius: 4px;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.artist-admin-genero-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.artist-admin-genero-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.artist-admin-genero-pill--activo {
+  background: linear-gradient(90deg, #5d5d63, #7a7a82);
+  border-color: transparent;
+}
+
+.artist-profile-cover {
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.music-admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.music-admin-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.music-admin-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.music-admin-item-cover {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.music-admin-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.music-admin-item-body span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.music-admin-item-body audio {
+  width: 100%;
+  height: 32px;
+}
+
+.music-admin-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.music-admin-delete-button {
+  color: var(--danger);
+  border-color: rgba(255, 89, 112, 0.35);
+}
+
+.music-admin-edit-form {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .music-admin-item {
+    flex-wrap: wrap;
+  }
+
+  .music-admin-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

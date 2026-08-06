@@ -22,9 +22,9 @@
 
 [data-theme="oscuro"] .login-decoration {
   background:
-    radial-gradient(circle at 15% 20%, rgba(30, 215, 96, 0.3), transparent 38%),
-    radial-gradient(circle at 80% 75%, rgba(29, 185, 84, 0.24), transparent 32%),
-    linear-gradient(145deg, #161616, #080808);
+    radial-gradient(circle at 15% 20%, rgba(47, 168, 188, 0.3), transparent 38%),
+    radial-gradient(circle at 80% 75%, rgba(255, 212, 121, 0.18), transparent 32%),
+    linear-gradient(145deg, #0b1728, #050a14);
 }
 
 .login-decoration::after {
@@ -178,7 +178,7 @@
 }
 
 [data-theme="oscuro"] .login-button {
-  color: rgb(252, 251, 251);
+  color: var(--on-accent);
 }
 
 .login-button:hover:not(:disabled) {

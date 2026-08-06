@@ -4053,21 +4053,21 @@
    ══════════════════════════════════════════════════════════════ */
 
 [data-theme="oscuro"] .app-shell {
-  background: linear-gradient(180deg, #0f0f0f 0%, #070707 100%);
+  background: linear-gradient(180deg, #0c1524 0%, #050a14 100%);
 }
 
 [data-theme="oscuro"] .sidebar {
-  background: #000000;
+  background: #030710;
   border-right: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 [data-theme="oscuro"] .brand-icon {
-  background: linear-gradient(130deg, #1ed760, #169c46);
-  color: #041109;
+  background: var(--brand-gradient);
+  color: var(--on-accent);
 }
 
 [data-theme="oscuro"] .topbar {
-  background: rgba(18, 18, 18, 0.88);
+  background: rgba(10, 20, 34, 0.88);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -4097,12 +4097,12 @@
 [data-theme="oscuro"] .field input:focus,
 [data-theme="oscuro"] .playlist-create-input:focus,
 [data-theme="oscuro"] .friends-search-input:focus {
-  border-color: #1ed760;
-  box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 168, 188, 0.2);
 }
 
 [data-theme="oscuro"] .content-area {
-  background: linear-gradient(180deg, rgba(40, 40, 40, 0.28) 0%, rgba(10, 10, 10, 0) 38%);
+  background: linear-gradient(180deg, rgba(20, 35, 55, 0.28) 0%, rgba(5, 10, 20, 0) 38%);
 }
 
 [data-theme="oscuro"] .section-block,
@@ -4115,14 +4115,14 @@
 [data-theme="oscuro"] .library-side-panel,
 [data-theme="oscuro"] .friends-card,
 [data-theme="oscuro"] .social-shell {
-  background: #181818;
+  background: #0d1826;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
 [data-theme="oscuro"] .search-results-panel {
   background:
-    linear-gradient(180deg, rgba(27, 27, 35, 0.96) 0%, rgba(22, 22, 30, 0.94) 100%),
-    #181818;
+    linear-gradient(180deg, rgba(13, 26, 43, 0.96) 0%, rgba(9, 19, 33, 0.94) 100%),
+    #0d1826;
 }
 
 [data-theme="oscuro"] .search-group,
@@ -4132,7 +4132,7 @@
 [data-theme="oscuro"] .artist-card,
 [data-theme="oscuro"] .mini-player,
 [data-theme="oscuro"] .profile-preview {
-  background: #202020;
+  background: #12233a;
   border-color: rgba(255, 255, 255, 0.06);
 }
 
@@ -4154,8 +4154,8 @@
 }
 
 [data-theme="oscuro"] .sidebar-link.active {
-  background: rgba(30, 215, 96, 0.18);
-  border-color: rgba(30, 215, 96, 0.42);
+  background: rgba(47, 168, 188, 0.18);
+  border-color: rgba(47, 168, 188, 0.42);
   color: #ffffff;
 }
 
@@ -4163,14 +4163,14 @@
 [data-theme="oscuro"] .save-button,
 [data-theme="oscuro"] .login-button,
 [data-theme="oscuro"] .playlist-create-confirm {
-  background: linear-gradient(90deg, #169c46, #1ed760);
-  color: #05130b;
+  background: linear-gradient(90deg, #1f93ac, #ffd479);
+  color: var(--on-accent);
 }
 
 [data-theme="oscuro"] .play-circle {
-  background: linear-gradient(90deg, #169c46, #1ed760);
-  color: #ffffff;
-  box-shadow: 0 14px 34px rgba(22, 156, 70, 0.32);
+  background: linear-gradient(90deg, #1f93ac, #ffd479);
+  color: var(--on-accent);
+  box-shadow: 0 14px 34px rgba(47, 168, 188, 0.35);
 }
 
 [data-theme="oscuro"] .secondary-link-button,
@@ -4187,31 +4187,31 @@
 [data-theme="oscuro"] .mini-player-cover,
 [data-theme="oscuro"] .artist-circle {
   background:
-    radial-gradient(circle at 25% 20%, rgba(30, 215, 96, 0.45), transparent 42%),
-    linear-gradient(150deg, #2d2d2d, #141414 75%);
+    radial-gradient(circle at 25% 20%, rgba(47, 168, 188, 0.45), transparent 42%),
+    linear-gradient(150deg, #16283f, #0a1220 75%);
   border-color: rgba(255, 255, 255, 0.08);
-  color: #d9ffe8;
+  color: #cdeaf2;
 }
 
 [data-theme="oscuro"] .section-label,
 [data-theme="oscuro"] .small-label {
-  color: #1ed760;
+  color: var(--accent);
 }
 
 [data-theme="oscuro"] .friends-hero-stats span {
-  border-color: rgba(30, 215, 96, 0.35);
-  background: rgba(30, 215, 96, 0.12);
-  color: #cbf9dd;
+  border-color: rgba(47, 168, 188, 0.35);
+  background: rgba(47, 168, 188, 0.12);
+  color: #cdeaf2;
 }
 
 [data-theme="oscuro"] .friends-status {
-  border-color: rgba(30, 215, 96, 0.42);
-  background: rgba(30, 215, 96, 0.12);
-  color: #1ed760;
+  border-color: rgba(47, 168, 188, 0.42);
+  background: rgba(47, 168, 188, 0.12);
+  color: var(--accent);
 }
 
 [data-theme="oscuro"] .mini-player {
-  background: rgba(18, 18, 18, 0.94);
+  background: rgba(11, 20, 32, 0.94);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -4219,16 +4219,16 @@
 [data-theme="oscuro"] .volume-slider::-webkit-slider-runnable-track,
 [data-theme="oscuro"] .player-progress-slider::-moz-range-track,
 [data-theme="oscuro"] .volume-slider::-moz-range-track {
-  background: linear-gradient(90deg, #0f0f0f 0%, #1b1b1b 45%, #1ed760 100%);
+  background: linear-gradient(90deg, #0a1220 0%, #16283f 45%, #2fa8bc 100%);
 }
 
 [data-theme="oscuro"] .volume-slider::-moz-range-progress,
 [data-theme="oscuro"] .player-progress-slider::-moz-range-progress {
-  background: linear-gradient(90deg, #0f0f0f, #1ed760);
+  background: linear-gradient(90deg, #0a1220, #2fa8bc);
 }
 
 [data-theme="oscuro"] .player-progress-bar {
-  background: linear-gradient(90deg, #169c46, #1ed760);
+  background: linear-gradient(90deg, #1f93ac, #ffd479);
 }
 
 [data-theme="oscuro"] .player-progress-slider::-webkit-slider-thumb,
@@ -4238,7 +4238,7 @@
 [data-theme="oscuro"] .volume-slider::-moz-range-thumb,
 [data-theme="oscuro"] .player-progress::-moz-range-thumb {
   background: #ffffff;
-  border-color: #0f6f2f;
+  border-color: #0d4a5c;
 }
 
 [data-theme="oscuro"] .form-error,
@@ -4267,7 +4267,7 @@
 [data-theme="oscuro"] .tile-card:hover,
 [data-theme="oscuro"] .artist-card:hover,
 [data-theme="oscuro"] .artist-list-card:hover {
-  background: #262626;
+  background: #1a3350;
 }
 
 [data-theme="oscuro"] .backlink {
@@ -4280,7 +4280,7 @@
 }
 
 [data-theme="oscuro"] .profile-hero-card {
-  background: linear-gradient(180deg, rgba(44, 44, 50, 0.92) 0%, rgba(23, 23, 30, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(20, 36, 58, 0.92) 0%, rgba(8, 15, 26, 0.95) 100%);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -4294,7 +4294,7 @@
 }
 
 [data-theme="oscuro"] .profile-count-link--active strong {
-  color: #1ed760;
+  color: var(--accent);
 }
 
 [data-theme="oscuro"] .profile-stat-card,
@@ -4306,7 +4306,7 @@
 
 [data-theme="oscuro"] .search-playlist-menu,
 [data-theme="oscuro"] .playlist-dropdown-menu {
-  background: #17171f;
+  background: #0b1420;
   border-color: rgba(255, 255, 255, 0.14);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
 }
@@ -4368,26 +4368,26 @@
 }
 
 [data-theme="oscuro"] .privacy-toggle-btn--on {
-  background: #1ed760;
+  background: var(--accent);
 }
 
 [data-theme="oscuro"] .content-area--amigos .friends-shell,
 [data-theme="oscuro"] .content-area--perfil .profile-friends-section {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%),
-    #181818;
+    #0d1826;
   border: none;
 }
 
 [data-theme="oscuro"] .content-area--amigos .friends-card,
 [data-theme="oscuro"] .content-area--perfil .profile-friends-section .friends-card {
-  background: #1d1d1d;
+  background: #102036;
   border-color: rgba(255, 255, 255, 0.09);
 }
 
 [data-theme="oscuro"] .content-area--amigos .friends-item,
 [data-theme="oscuro"] .content-area--perfil .profile-friends-section .friends-item {
-  background: #222222;
+  background: #16283f;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -4425,7 +4425,7 @@
 
 [data-theme="oscuro"] .sp-avatar,
 [data-theme="oscuro"] .fpp-hero-avatar {
-  background: linear-gradient(135deg, #2a2a2a, #181818);
+  background: linear-gradient(135deg, #16283f, #0a1220);
   border-color: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
@@ -4433,16 +4433,16 @@
 [data-theme="oscuro"] .sp-mutual,
 [data-theme="oscuro"] .fpp-badge,
 [data-theme="oscuro"] .fpp-section-label {
-  color: #1ed760;
+  color: var(--accent);
 }
 
 [data-theme="oscuro"] .fpp-badge {
-  background: rgba(30, 215, 96, 0.1);
-  border-color: rgba(30, 215, 96, 0.3);
+  background: rgba(47, 168, 188, 0.1);
+  border-color: rgba(47, 168, 188, 0.3);
 }
 
 [data-theme="oscuro"] .sp-user-row--active {
-  background: rgba(30, 215, 96, 0.06);
+  background: rgba(47, 168, 188, 0.06);
 }
 
 [data-theme="oscuro"] .sp-follow-btn {
@@ -4456,7 +4456,7 @@
 }
 
 [data-theme="oscuro"] .friend-profile-panel {
-  background: linear-gradient(180deg, rgba(44, 44, 50, 0.7) 0%, rgba(23, 23, 30, 0.85) 100%);
+  background: linear-gradient(180deg, rgba(20, 36, 58, 0.7) 0%, rgba(8, 15, 26, 0.85) 100%);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -4475,7 +4475,7 @@
 }
 
 [data-theme="oscuro"] .social-conversation-row--active {
-  background: rgba(30, 215, 96, 0.08);
+  background: rgba(47, 168, 188, 0.08);
 }
 
 [data-theme="oscuro"] .social-chat-header,
@@ -4488,8 +4488,8 @@
 }
 
 [data-theme="oscuro"] .social-message-bubble--mine {
-  background: linear-gradient(90deg, #169c46, #1ed760);
-  color: #05130b;
+  background: linear-gradient(90deg, #1f93ac, #ffd479);
+  color: var(--on-accent);
 }
 
 [data-theme="oscuro"] .social-empty-state p {

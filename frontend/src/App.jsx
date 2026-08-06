@@ -3,6 +3,7 @@ import "./App.css";
 import Login from "./components/Login";
 import PerfilArtista from "./components/PerfilArtista";
 import GestionCanciones from "./components/GestionCanciones";
+import Social from "./components/Social";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 const INTERVALO_ACTUALIZACION_POPULARES_MS = 60 * 1000;
@@ -649,14 +650,18 @@ function App() {
     };
   };
 
+  const cerrarSesionPorExpiracion = () => {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("usuario");
+    setUsuario(null);
+  };
+
   const manejarSesionExpirada = (respuesta) => {
     if (respuesta.status !== 401 && respuesta.status !== 403) {
       return false;
     }
 
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("usuario");
-    setUsuario(null);
+    cerrarSesionPorExpiracion();
     return true;
   };
 
@@ -1948,6 +1953,13 @@ function App() {
           </button>
           <button
             type="button"
+            className={`sidebar-link ${vistaActiva === "social" ? "active" : ""}`}
+            onClick={() => cambiarVista("social")}
+          >
+            Social
+          </button>
+          <button
+            type="button"
             className={`sidebar-link ${vistaActiva === "artistas" ? "active" : ""}`}
             onClick={() => cambiarVista("artistas")}
           >
@@ -2692,6 +2704,8 @@ function App() {
               ))}
             </div>
           </section>
+        ) : vistaActiva === "social" ? (
+          <Social usuario={usuario} onSesionExpirada={cerrarSesionPorExpiracion} />
         ) : vistaActiva === "perfil-artista" ? (
           <PerfilArtista usuario={usuario} onVerPerfilPublico={abrirPerfilArtista} />
         ) : vistaActiva === "mi-musica" ? (

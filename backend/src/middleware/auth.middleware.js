@@ -84,7 +84,8 @@ async function verificarToken(req, res, next) {
          nombre,
          correo,
          rol,
-         estado
+         estado,
+         ultima_actividad
        FROM usuarios
        WHERE id_usuario = ?
        LIMIT 1`,
@@ -117,6 +118,32 @@ async function verificarToken(req, res, next) {
       correo: usuario.correo,
       rol: usuario.rol,
     };
+
+    /*
+     * Actualiza la marca de actividad para el indicador
+     * de presencia (en línea / desconectado), pero con
+     * throttle: solo si la última marca tiene más de 60s,
+     * para no escribir en MySQL en cada request.
+     */
+    const ultimaMarca = usuario.ultima_actividad
+      ? new Date(usuario.ultima_actividad).getTime()
+      : 0;
+
+    if (Date.now() - ultimaMarca > 60 * 1000) {
+      try {
+        await pool.execute(
+          `UPDATE usuarios
+           SET ultima_actividad = CURRENT_TIMESTAMP
+           WHERE id_usuario = ?`,
+          [usuario.id_usuario]
+        );
+      } catch (errorActividad) {
+        console.warn(
+          "No se pudo actualizar ultima_actividad:",
+          errorActividad.message
+        );
+      }
+    }
 
     return next();
   } catch (error) {

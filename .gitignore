@@ -14,3 +14,6 @@
 
 # Configuración local de VS Code
 .vscode/
+
+# Configuración local de Claude Code
+.claude/

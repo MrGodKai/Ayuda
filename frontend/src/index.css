@@ -5,10 +5,31 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family:
     "Manrope", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, sans-serif;
+  --bg-base: #f5f7fb;
+  --bg-elevated: #ffffff;
+  --surface: rgba(255, 255, 255, 0.94);
+  --surface-muted: rgba(241, 243, 250, 0.92);
+  --surface-soft: rgba(37, 99, 235, 0.06);
+  --border: #e2e5ee;
+  --border-strong: rgba(124, 58, 237, 0.35);
+  --text-main: #14162b;
+  --text-muted: #5b5f77;
+  --text-soft: #8a8ea3;
+  --accent: #2563eb;
+  --accent-strong: #7c3aed;
+  --accent-soft: rgba(37, 99, 235, 0.14);
+  --success: #16a34a;
+  --danger: #e11d48;
+  --shadow-lg: 0 20px 45px rgba(20, 22, 43, 0.1);
+  --brand-gradient: linear-gradient(135deg, #7c3aed 0%, #2563eb 40%, #06b6d4 70%, #22c55e 100%);
+}
+
+:root[data-theme="oscuro"] {
+  color-scheme: dark;
   --bg-base: #0b0b0b;
   --bg-elevated: #121212;
   --surface: rgba(24, 24, 24, 0.96);
@@ -25,6 +46,7 @@
   --success: #53db8a;
   --danger: #ff6b81;
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.42);
+  --brand-gradient: linear-gradient(130deg, #1ed760, #169c46);
 }
 
 html {
@@ -35,8 +57,14 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #1a1a1a 0%, #090909 42%, #050505 100%);
+  background: radial-gradient(circle at top left, rgba(124, 58, 237, 0.12), transparent 40%),
+    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.1), transparent 45%),
+    #f5f7fb;
   color: var(--text-main);
+}
+
+:root[data-theme="oscuro"] body {
+  background: radial-gradient(circle at top, #1a1a1a 0%, #090909 42%, #050505 100%);
 }
 
 #root {

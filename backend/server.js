@@ -37,6 +37,10 @@ const amistadesRoutes = require(
   "./src/routes/amistades.routes"
 );
 
+const mensajesRoutes = require(
+  "./src/routes/mensajes.routes"
+);
+
 const usuariosRoutes = require(
   "./src/routes/usuarios.routes"
 );
@@ -126,6 +130,11 @@ app.use(
 app.use(
   "/api/amistades",
   amistadesRoutes
+);
+
+app.use(
+  "/api/mensajes",
+  mensajesRoutes
 );
 
 app.use(
@@ -327,6 +336,32 @@ async function iniciarServidor() {
        )`
     );
 
+    await conexion.execute(
+      `CREATE TABLE IF NOT EXISTS mensajes (
+         id_mensaje BIGINT AUTO_INCREMENT PRIMARY KEY,
+         id_usuario_emisor INT NOT NULL,
+         id_usuario_receptor INT NOT NULL,
+         contenido VARCHAR(2000) NOT NULL,
+         leido_en TIMESTAMP NULL DEFAULT NULL,
+         creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+         INDEX idx_mensajes_emisor_receptor_fecha (id_usuario_emisor, id_usuario_receptor, creado_en),
+         INDEX idx_mensajes_receptor_emisor_fecha (id_usuario_receptor, id_usuario_emisor, creado_en),
+
+         CONSTRAINT fk_mensajes_emisor
+           FOREIGN KEY (id_usuario_emisor)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE,
+
+         CONSTRAINT fk_mensajes_receptor
+           FOREIGN KEY (id_usuario_receptor)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE
+       )`
+    );
+
     const [columnasArtistas] = await conexion.execute(
       `SELECT COLUMN_NAME
        FROM information_schema.COLUMNS
@@ -400,6 +435,26 @@ async function iniciarServidor() {
       conn2.release();
     } catch (migErr) {
       console.warn("Advertencia en migración perfil_privado:", migErr.message);
+    }
+
+    try {
+      const conn3 = await pool.getConnection();
+      const [colsActividad] = await conn3.execute(
+        `SELECT COUNT(*) AS cnt
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = 'usuarios'
+           AND COLUMN_NAME  = 'ultima_actividad'`
+      );
+      if (colsActividad[0].cnt === 0) {
+        await conn3.execute(
+          `ALTER TABLE usuarios
+           ADD COLUMN ultima_actividad TIMESTAMP NULL DEFAULT NULL`
+        );
+      }
+      conn3.release();
+    } catch (migErr) {
+      console.warn("Advertencia en migración ultima_actividad:", migErr.message);
     }
 
     app.listen(PORT, () => {

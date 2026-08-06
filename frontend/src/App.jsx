@@ -231,6 +231,9 @@ function App() {
   const [errorPerfilAmigo, setErrorPerfilAmigo] = useState("");
   const [perfilPrivado, setPerfilPrivado] = useState(false);
   const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
+  const [tema, setTema] = useState(
+    () => localStorage.getItem("istream:tema") || "claro"
+  );
   const [recientesBusqueda, setRecientesBusqueda] = useState({
     canciones: [],
     artistas: [],
@@ -613,6 +616,11 @@ function App() {
     sincronizarFormulario(usuario);
     cargarPerfil();
   }, [usuario?.id]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", tema);
+    localStorage.setItem("istream:tema", tema);
+  }, [tema]);
 
   useEffect(() => {
     const cargarArtistas = async () => {
@@ -3077,6 +3085,21 @@ function App() {
                       className={`privacy-toggle-btn${perfilPrivado ? " privacy-toggle-btn--on" : ""}`}
                       onClick={() => cambiarPrivacidadPerfil(!perfilPrivado)}
                       aria-label={perfilPrivado ? "Desactivar perfil privado" : "Activar perfil privado"}
+                    >
+                      <span className="privacy-toggle-knob" />
+                    </button>
+                  </div>
+
+                  <div className="privacy-toggle-row">
+                    <div className="privacy-toggle-info">
+                      <strong>Visualización</strong>
+                      <span>Elige entre modo claro y modo oscuro.</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`privacy-toggle-btn${tema === "oscuro" ? " privacy-toggle-btn--on" : ""}`}
+                      onClick={() => setTema(tema === "oscuro" ? "claro" : "oscuro")}
+                      aria-label={tema === "oscuro" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
                     >
                       <span className="privacy-toggle-knob" />
                     </button>

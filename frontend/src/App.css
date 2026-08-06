@@ -3040,6 +3040,7 @@
 }
 
 .social-search-input {
+  flex: 0 0 auto;
   width: 100%;
   padding: 10px 14px;
   border-radius: 999px;

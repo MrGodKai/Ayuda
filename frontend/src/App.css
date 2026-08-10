@@ -108,7 +108,8 @@
 .logo-pill,
 .search-box,
 .top-avatar,
-.field input {
+.field input,
+.field textarea {
   border: 1px solid var(--border);
   background: #17171e;
   color: var(--text-main);
@@ -131,12 +132,14 @@
 }
 
 .search-box::placeholder,
-.field input::placeholder {
+.field input::placeholder,
+.field textarea::placeholder {
   color: #777580;
 }
 
 .search-box:focus,
-.field input:focus {
+.field input:focus,
+.field textarea:focus {
   border-color: #985cff;
   box-shadow: 0 0 0 3px rgba(152, 92, 255, 0.15);
 }
@@ -1507,6 +1510,136 @@
   opacity: 0.9;
 }
 
+.artist-admin-cover-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.artist-admin-cover-preview {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background-color: var(--surface-muted);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: flex-start;
+  padding: 16px;
+}
+
+.artist-admin-identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px 24px;
+}
+
+.artist-admin-avatar {
+  flex-shrink: 0;
+}
+
+.artist-admin-upload-button--avatar {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.artist-admin-genero-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.artist-admin-genero-pill {
+  appearance: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.artist-admin-genero-pill:hover {
+  border-color: var(--accent);
+}
+
+.artist-admin-genero-grid .tag-pill.artist-admin-genero-pill--activo {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.crop-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(5, 6, 12, 0.72);
+}
+
+.crop-modal-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 24px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-main);
+}
+
+.crop-modal-card h3 {
+  margin: 0 0 4px;
+}
+
+.crop-modal-hint {
+  margin: 0 0 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.crop-modal-stage {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0b0b10;
+}
+
+.crop-modal-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.crop-modal-zoom-row span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.crop-modal-zoom-row .volume-slider {
+  flex: 1;
+}
+
+.crop-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.crop-modal-actions .save-button {
+  margin-top: 0;
+}
+
 .profile-logout-button {
   border: none;
   width: 100%;
@@ -1550,11 +1683,19 @@
   font-weight: 700;
 }
 
-.field input {
+.field input,
+.field textarea {
   width: 100%;
   padding: 15px 16px;
   border-radius: 4px;
   outline: none;
+}
+
+.field textarea {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
 }
 
 .full-width {
@@ -1999,6 +2140,7 @@
 .mini-player-cover,
 .top-avatar,
 .field input,
+.field textarea,
 .player-button,
 .secondary-link-button,
 .artist-profile-button,
@@ -2181,6 +2323,7 @@
 
 .search-box,
 .field input,
+.field textarea,
 .playlist-create-input,
 .friends-search-input {
   border-radius: 999px;
@@ -2190,6 +2333,7 @@
 
 .search-box:focus,
 .field input:focus,
+.field textarea:focus,
 .playlist-create-input:focus,
 .friends-search-input:focus {
   border-color: #1ed760;
@@ -3596,6 +3740,7 @@
 
 .search-box,
 .field input,
+.field textarea,
 .playlist-create-input,
 .friends-search-input,
 .social-search-input,
@@ -3606,12 +3751,14 @@
 }
 
 .search-box::placeholder,
-.field input::placeholder {
+.field input::placeholder,
+.field textarea::placeholder {
   color: #9296ab;
 }
 
 .search-box:focus,
 .field input:focus,
+.field textarea:focus,
 .playlist-create-input:focus,
 .friends-search-input:focus {
   border-color: #2563eb;
@@ -4105,6 +4252,7 @@
 
 [data-theme="oscuro"] .search-box,
 [data-theme="oscuro"] .field input,
+[data-theme="oscuro"] .field textarea,
 [data-theme="oscuro"] .playlist-create-input,
 [data-theme="oscuro"] .friends-search-input,
 [data-theme="oscuro"] .social-search-input,
@@ -4115,12 +4263,14 @@
 }
 
 [data-theme="oscuro"] .search-box::placeholder,
-[data-theme="oscuro"] .field input::placeholder {
+[data-theme="oscuro"] .field input::placeholder,
+[data-theme="oscuro"] .field textarea::placeholder {
   color: #777580;
 }
 
 [data-theme="oscuro"] .search-box:focus,
 [data-theme="oscuro"] .field input:focus,
+[data-theme="oscuro"] .field textarea:focus,
 [data-theme="oscuro"] .playlist-create-input:focus,
 [data-theme="oscuro"] .friends-search-input:focus {
   border-color: var(--accent);

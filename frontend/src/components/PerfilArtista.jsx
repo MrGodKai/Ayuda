@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
+import RecortarImagenModal from "./RecortarImagenModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
+const CONFIG_RECORTE = {
+  foto: { aspecto: 1, anchoSalida: 512, altoSalida: 512, forma: "round", titulo: "Recortar foto de perfil" },
+  portada: { aspecto: 4, anchoSalida: 1600, altoSalida: 400, forma: "rect", titulo: "Recortar portada" },
+};
 
 function PerfilArtista({ usuario, onVerPerfilPublico }) {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [subiendoPortada, setSubiendoPortada] = useState(false);
+  const [recorte, setRecorte] = useState(null);
 
   const [mensajeError, setMensajeError] = useState("");
   const [mensajeExito, setMensajeExito] = useState("");
@@ -209,6 +216,30 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
     }
   };
 
+  const seleccionarImagen = (tipo, archivo) => {
+    if (!archivo) {
+      return;
+    }
+
+    setRecorte({ tipo, urlOriginal: URL.createObjectURL(archivo) });
+  };
+
+  const cerrarRecorte = () => {
+    if (recorte) {
+      URL.revokeObjectURL(recorte.urlOriginal);
+    }
+
+    setRecorte(null);
+  };
+
+  const confirmarRecorte = async (blob) => {
+    const tipo = recorte.tipo;
+    const archivoRecortado = new File([blob], `${tipo}.jpg`, { type: "image/jpeg" });
+
+    cerrarRecorte();
+    await subirImagen(tipo, archivoRecortado);
+  };
+
   if (usuario?.rol !== "artista") {
     return (
       <section className="profile-section">
@@ -237,7 +268,10 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
               accept="image/jpeg,image/png,image/webp"
               hidden
               disabled={subiendoPortada}
-              onChange={(event) => subirImagen("portada", event.target.files?.[0])}
+              onChange={(event) => {
+                seleccionarImagen("portada", event.target.files?.[0]);
+                event.target.value = "";
+              }}
             />
           </label>
         </div>
@@ -257,7 +291,10 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
                 accept="image/jpeg,image/png,image/webp"
                 hidden
                 disabled={subiendoFoto}
-                onChange={(event) => subirImagen("foto", event.target.files?.[0])}
+                onChange={(event) => {
+                  seleccionarImagen("foto", event.target.files?.[0]);
+                  event.target.value = "";
+                }}
               />
             </label>
           </div>
@@ -344,6 +381,19 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
           </>
         )}
       </form>
+
+      {recorte && (
+        <RecortarImagenModal
+          imagenUrl={recorte.urlOriginal}
+          aspecto={CONFIG_RECORTE[recorte.tipo].aspecto}
+          anchoSalida={CONFIG_RECORTE[recorte.tipo].anchoSalida}
+          altoSalida={CONFIG_RECORTE[recorte.tipo].altoSalida}
+          forma={CONFIG_RECORTE[recorte.tipo].forma}
+          titulo={CONFIG_RECORTE[recorte.tipo].titulo}
+          onCancelar={cerrarRecorte}
+          onConfirmar={confirmarRecorte}
+        />
+      )}
     </section>
   );
 }

@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
 import RecortarImagenModal from "./RecortarImagenModal";
+import { CONFIG_RECORTE } from "../utils/configRecorte";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
-
-const CONFIG_RECORTE = {
-  foto: { aspecto: 1, anchoSalida: 512, altoSalida: 512, forma: "round", titulo: "Recortar foto de perfil" },
-  portada: { aspecto: 4, anchoSalida: 1600, altoSalida: 400, forma: "rect", titulo: "Recortar portada" },
-};
 
 function PerfilArtista({ usuario, onVerPerfilPublico }) {
   const [cargando, setCargando] = useState(true);
@@ -26,6 +22,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
     nombreArtistico: "",
     biografia: "",
     generos: [],
+    fechaDebut: "",
   });
 
   const construirUrlImagen = (ruta) => {
@@ -74,6 +71,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
         nombreArtistico: datosPerfil.perfil?.nombreArtistico || "",
         biografia: datosPerfil.perfil?.biografia || "",
         generos: datosPerfil.perfil?.generos || [],
+        fechaDebut: datosPerfil.perfil?.fechaDebut || "",
       });
     } catch (error) {
       setMensajeError(error.message);
@@ -150,6 +148,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
           nombreArtistico: formulario.nombreArtistico.trim(),
           biografia: formulario.biografia.trim(),
           generos: formulario.generos,
+          fechaDebut: formulario.fechaDebut || null,
         }),
       });
 
@@ -163,6 +162,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
         nombreArtistico: datos.perfil.nombreArtistico,
         biografia: datos.perfil.biografia,
         generos: datos.perfil.generos,
+        fechaDebut: datos.perfil.fechaDebut || "",
       });
       setMensajeExito(datos.mensaje || "Perfil de artista actualizado correctamente.");
     } catch (error) {
@@ -334,6 +334,17 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
                   value={formulario.nombreArtistico}
                   onChange={actualizarCampo}
                   placeholder="Nombre con el que te conocerán en iStream"
+                />
+              </label>
+
+              <label className="field">
+                <span>Fecha de debut</span>
+                <input
+                  type="date"
+                  name="fechaDebut"
+                  value={formulario.fechaDebut}
+                  onChange={actualizarCampo}
+                  max={new Date().toISOString().slice(0, 10)}
                 />
               </label>
             </div>

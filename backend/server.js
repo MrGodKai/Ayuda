@@ -45,6 +45,10 @@ const usuariosRoutes = require(
   "./src/routes/usuarios.routes"
 );
 
+const perfilPublicoRoutes = require(
+  "./src/routes/perfil-publico.routes"
+);
+
 const app = express();
 
 const PORT = Number(
@@ -155,6 +159,11 @@ app.use(
 app.use(
   "/api/canciones",
   cancionesRoutes
+);
+
+app.use(
+  "/api/perfiles",
+  perfilPublicoRoutes
 );
 
 /*
@@ -455,6 +464,59 @@ async function iniciarServidor() {
       conn3.release();
     } catch (migErr) {
       console.warn("Advertencia en migración ultima_actividad:", migErr.message);
+    }
+
+    try {
+      const conn4 = await pool.getConnection();
+      const [columnasUsuarios] = await conn4.execute(
+        `SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = 'usuarios'
+           AND COLUMN_NAME IN ('biografia', 'portada_url')`
+      );
+
+      const columnasUsuariosExistentes = new Set(
+        columnasUsuarios.map((fila) => fila.COLUMN_NAME)
+      );
+
+      if (!columnasUsuariosExistentes.has("biografia")) {
+        await conn4.execute(
+          `ALTER TABLE usuarios
+           ADD COLUMN biografia VARCHAR(500) NULL`
+        );
+      }
+
+      if (!columnasUsuariosExistentes.has("portada_url")) {
+        await conn4.execute(
+          `ALTER TABLE usuarios
+           ADD COLUMN portada_url VARCHAR(500) NULL`
+        );
+      }
+
+      conn4.release();
+    } catch (migErr) {
+      console.warn("Advertencia en migración biografia/portada_url de usuarios:", migErr.message);
+    }
+
+    try {
+      const conn5 = await pool.getConnection();
+      const [colsFechaDebut] = await conn5.execute(
+        `SELECT COUNT(*) AS cnt
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = 'artistas'
+           AND COLUMN_NAME  = 'fecha_debut'`
+      );
+      if (colsFechaDebut[0].cnt === 0) {
+        await conn5.execute(
+          `ALTER TABLE artistas
+           ADD COLUMN fecha_debut DATE NULL`
+        );
+      }
+      conn5.release();
+    } catch (migErr) {
+      console.warn("Advertencia en migración fecha_debut:", migErr.message);
     }
 
     app.listen(PORT, () => {

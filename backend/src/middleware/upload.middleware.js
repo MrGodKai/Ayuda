@@ -6,6 +6,10 @@ const UPLOADS_ROOT = path.join(__dirname, "../../uploads/artistas");
 const CARPETA_FOTOS = path.join(UPLOADS_ROOT, "foto");
 const CARPETA_PORTADAS = path.join(UPLOADS_ROOT, "portada");
 
+const UPLOADS_ROOT_USUARIOS = path.join(__dirname, "../../uploads/usuarios");
+const CARPETA_FOTO_USUARIO = path.join(UPLOADS_ROOT_USUARIOS, "foto");
+const CARPETA_PORTADA_USUARIO = path.join(UPLOADS_ROOT_USUARIOS, "portada");
+
 const UPLOADS_ROOT_CANCIONES = path.join(__dirname, "../../uploads/canciones");
 const CARPETA_AUDIO = path.join(UPLOADS_ROOT_CANCIONES, "audio");
 const CARPETA_PORTADA_CANCION = path.join(UPLOADS_ROOT_CANCIONES, "portada");
@@ -13,6 +17,8 @@ const CARPETA_PORTADA_CANCION = path.join(UPLOADS_ROOT_CANCIONES, "portada");
 [
   CARPETA_FOTOS,
   CARPETA_PORTADAS,
+  CARPETA_FOTO_USUARIO,
+  CARPETA_PORTADA_USUARIO,
   CARPETA_AUDIO,
   CARPETA_PORTADA_CANCION,
 ].forEach((carpeta) => {
@@ -63,6 +69,18 @@ const uploadFotoArtista = multer({
 
 const uploadPortadaArtista = multer({
   storage: crearStorage(CARPETA_PORTADAS),
+  fileFilter: filtrarImagen,
+  limits: LIMITES,
+});
+
+const uploadFotoUsuario = multer({
+  storage: crearStorage(CARPETA_FOTO_USUARIO),
+  fileFilter: filtrarImagen,
+  limits: LIMITES,
+});
+
+const uploadPortadaUsuario = multer({
+  storage: crearStorage(CARPETA_PORTADA_USUARIO),
   fileFilter: filtrarImagen,
   limits: LIMITES,
 });
@@ -152,6 +170,14 @@ function rutaPublicaPortada(nombreArchivo) {
   return `/uploads/artistas/portada/${nombreArchivo}`;
 }
 
+function rutaPublicaFotoUsuario(nombreArchivo) {
+  return `/uploads/usuarios/foto/${nombreArchivo}`;
+}
+
+function rutaPublicaPortadaUsuario(nombreArchivo) {
+  return `/uploads/usuarios/portada/${nombreArchivo}`;
+}
+
 function eliminarArchivoPublico(rutaPublica) {
   if (!rutaPublica || !rutaPublica.startsWith("/uploads/")) {
     return;
@@ -187,9 +213,13 @@ function manejarErroresUpload(middlewareMulter) {
 module.exports = {
   uploadFotoArtista,
   uploadPortadaArtista,
+  uploadFotoUsuario,
+  uploadPortadaUsuario,
   uploadArchivosCancion,
   rutaPublicaFoto,
   rutaPublicaPortada,
+  rutaPublicaFotoUsuario,
+  rutaPublicaPortadaUsuario,
   rutaPublicaAudioCancion,
   rutaPublicaPortadaCancion,
   eliminarArchivoPublico,

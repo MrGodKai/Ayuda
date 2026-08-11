@@ -43,7 +43,7 @@ async function leerJsonSeguro(respuesta) {
   }
 }
 
-function Social({ usuario, onSesionExpirada }) {
+function Social({ usuario, onSesionExpirada, conversacionInicialId = null, onConversacionInicialConsumida }) {
   const [conversaciones, setConversaciones] = useState([]);
   const [cargandoConversaciones, setCargandoConversaciones] = useState(true);
   const [errorConversaciones, setErrorConversaciones] = useState("");
@@ -231,6 +231,16 @@ function Social({ usuario, onSesionExpirada }) {
     return () => clearInterval(intervalo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id]);
+
+  useEffect(() => {
+    if (!conversacionInicialId) {
+      return;
+    }
+
+    abrirConversacion(conversacionInicialId);
+    onConversacionInicialConsumida?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversacionInicialId]);
 
   useEffect(() => {
     if (!conversacionActivaId) {

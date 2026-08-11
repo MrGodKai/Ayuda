@@ -4,6 +4,9 @@ import Login from "./components/Login";
 import PerfilArtista from "./components/PerfilArtista";
 import GestionCanciones from "./components/GestionCanciones";
 import Social from "./components/Social";
+import PerfilPublico from "./components/PerfilPublico";
+import RecortarImagenModal from "./components/RecortarImagenModal";
+import { CONFIG_RECORTE } from "./utils/configRecorte";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 const INTERVALO_ACTUALIZACION_POPULARES_MS = 60 * 1000;
@@ -167,11 +170,15 @@ function App() {
     nombre: "",
     correo: "",
     ciudad: "",
+    biografia: "",
   });
   const [cargandoPerfil, setCargandoPerfil] = useState(false);
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
   const [mensajePerfil, setMensajePerfil] = useState("");
   const [errorPerfil, setErrorPerfil] = useState("");
+  const [recorteUsuario, setRecorteUsuario] = useState(null);
+  const [subiendoFotoUsuario, setSubiendoFotoUsuario] = useState(false);
+  const [subiendoPortadaUsuario, setSubiendoPortadaUsuario] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [resultadosBusqueda, setResultadosBusqueda] = useState({
     canciones: [],
@@ -185,7 +192,6 @@ function App() {
   const [errorPopulares, setErrorPopulares] = useState("");
   const [cargandoArtistas, setCargandoArtistas] = useState(false);
   const [artistasCatalogo, setArtistasCatalogo] = useState([]);
-  const [artistaSeleccionado, setArtistaSeleccionado] = useState(null);
   const [cancionActual, setCancionActual] = useState({
     id: 1,
     titulo: "Midnight City",
@@ -226,9 +232,11 @@ function App() {
   const [cargandoBusquedaSeguidores, setCargandoBusquedaSeguidores] = useState(false);
   const [mensajeSeguidores, setMensajeSeguidores] = useState("");
   const [errorSeguidores, setErrorSeguidores] = useState("");
-  const [perfilAmigo, setPerfilAmigo] = useState(null);
-  const [cargandoPerfilAmigo, setCargandoPerfilAmigo] = useState(false);
-  const [errorPerfilAmigo, setErrorPerfilAmigo] = useState("");
+  const [perfilPublico, setPerfilPublico] = useState(null);
+  const [cargandoPerfilPublico, setCargandoPerfilPublico] = useState(false);
+  const [errorPerfilPublico, setErrorPerfilPublico] = useState("");
+  const [vistaAnteriorPerfil, setVistaAnteriorPerfil] = useState("inicio");
+  const [chatInicialId, setChatInicialId] = useState(null);
   const [perfilPrivado, setPerfilPrivado] = useState(false);
   const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
   const [tema, setTema] = useState(
@@ -240,9 +248,10 @@ function App() {
   });
 
   const fotoPerfilUsuario =
-    typeof usuario?.fotoPerfil === "string"
-      ? usuario.fotoPerfil.trim()
+    typeof usuario?.fotoPerfil === "string" && usuario.fotoPerfil.trim()
+      ? resolverUrlImagen(usuario.fotoPerfil.trim())
       : "";
+  const portadaPerfilUsuario = resolverUrlImagen(usuario?.portadaUrl || null);
   const searchAreaRef = useRef(null);
   const audioRef = useRef(null);
   const claveRecientesBusqueda = useMemo(
@@ -605,6 +614,7 @@ function App() {
       nombre: usuarioActual?.nombre || "",
       correo: usuarioActual?.correo || "",
       ciudad: usuarioActual?.ciudad || "",
+      biografia: usuarioActual?.biografia || "",
     });
   };
 
@@ -634,7 +644,6 @@ function App() {
         }
 
         setArtistasCatalogo(datos.artistas || []);
-        setArtistaSeleccionado(datos.artistas?.[0] || null);
       } catch {
         setArtistasCatalogo([]);
       } finally {
@@ -665,7 +674,7 @@ function App() {
   };
 
   const manejarSesionExpirada = (respuesta) => {
-    if (respuesta.status !== 401 && respuesta.status !== 403) {
+    if (respuesta.status !== 401) {
       return false;
     }
 
@@ -1072,37 +1081,90 @@ function App() {
     }
   };
 
-  const verPerfilAmigo = async (idUsuario) => {
+  const cargarPerfilPublico = async ({ tipo, id, nombre }) => {
     const headers = obtenerHeadersAutenticados();
-    if (!headers) return;
 
-    if (perfilAmigo?.usuario?.id === idUsuario) {
-      setPerfilAmigo(null);
+    if (!headers) {
+      return null;
+    }
+
+    const ruta =
+      tipo === "artista"
+        ? `${API_URL}/perfiles/artista/${encodeURIComponent(id ?? nombre)}`
+        : `${API_URL}/perfiles/usuario/${id}`;
+
+    const respuesta = await fetch(ruta, { headers });
+
+    if (manejarSesionExpirada(respuesta)) {
+      return null;
+    }
+
+    const datos = await leerJsonSeguro(respuesta);
+
+    if (!respuesta.ok) {
+      throw new Error(datos.mensaje || "No se pudo cargar el perfil.");
+    }
+
+    return datos.perfil;
+  };
+
+  const abrirPerfilPublico = async ({ tipo, id, nombre }) => {
+    try {
+      setCargandoPerfilPublico(true);
+      setErrorPerfilPublico("");
+
+      if (vistaActiva !== "perfil-publico") {
+        setVistaAnteriorPerfil(vistaActiva);
+      }
+
+      const perfil = await cargarPerfilPublico({ tipo, id, nombre });
+
+      setPerfilPublico(perfil);
+      setBusqueda("");
+      setBusquedaAbierta(false);
+      setVistaActiva("perfil-publico");
+    } catch (error) {
+      setPerfilPublico(null);
+      setErrorPerfilPublico(normalizarErrorRed(error, "No se pudo cargar el perfil."));
+      setVistaActiva("perfil-publico");
+    } finally {
+      setCargandoPerfilPublico(false);
+    }
+  };
+
+  const refrescarPerfilPublico = async () => {
+    if (!perfilPublico) {
       return;
     }
 
     try {
-      setCargandoPerfilAmigo(true);
-      setErrorPerfilAmigo("");
-      setPerfilAmigo(null);
+      const perfil =
+        perfilPublico.tipo === "artista"
+          ? await cargarPerfilPublico({ tipo: "artista", id: perfilPublico.idArtista })
+          : await cargarPerfilPublico({ tipo: "usuario", id: perfilPublico.idUsuario });
 
-      const respuesta = await fetch(`${API_URL}/amistades/perfil/${idUsuario}`, { headers });
-
-      if (manejarSesionExpirada(respuesta)) return;
-
-      const datos = await leerJsonSeguro(respuesta);
-
-      if (!respuesta.ok) {
-        throw new Error(datos.mensaje || "No se pudo cargar el perfil.");
-      }
-
-      setPerfilAmigo(datos);
-    } catch (error) {
-      setErrorPerfilAmigo(normalizarErrorRed(error, "No se pudo cargar el perfil de este usuario."));
-    } finally {
-      setCargandoPerfilAmigo(false);
+      setPerfilPublico(perfil);
+    } catch {
+      // El perfil ya cargado se mantiene visible si el refresco falla.
     }
   };
+
+  const seguirDesdePerfilPublico = async (idUsuario) => {
+    await seguirUsuario(idUsuario);
+    await refrescarPerfilPublico();
+  };
+
+  const dejarDeSeguirDesdePerfilPublico = async (idUsuario) => {
+    await dejarDeSeguirUsuario(idUsuario);
+    await refrescarPerfilPublico();
+  };
+
+  const abrirChatConUsuario = (idUsuario) => {
+    setChatInicialId(idUsuario);
+    cambiarVista("social");
+  };
+
+  const verPerfilAmigo = (idUsuario) => abrirPerfilPublico({ tipo: "usuario", id: idUsuario });
 
   const cambiarPrivacidadPerfil = async (privado) => {
     const headers = obtenerHeadersAutenticados();
@@ -1398,8 +1460,7 @@ function App() {
       const datos = await leerJsonSeguro(respuesta);
 
       if (
-  respuesta.status === 401 ||
-  respuesta.status === 403
+  respuesta.status === 401
 ) {
   sessionStorage.removeItem("token");
   sessionStorage.removeItem("usuario");
@@ -1475,6 +1536,7 @@ function App() {
   nombre: perfilForm.nombre.trim(),
   correo: perfilForm.correo.trim(),
   ciudad: perfilForm.ciudad.trim(),
+  biografia: perfilForm.biografia.trim(),
   fotoPerfil: usuario?.fotoPerfil ?? null,
   telefono: usuario?.telefono ?? null,
 }),
@@ -1491,6 +1553,7 @@ function App() {
         nombre: perfilForm.nombre.trim(),
         correo: perfilForm.correo.trim(),
         ciudad: perfilForm.ciudad.trim(),
+        biografia: perfilForm.biografia.trim(),
       };
 
       sessionStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
@@ -1503,6 +1566,74 @@ function App() {
     }
   };
 
+  const subirImagenUsuario = async (tipo, archivo) => {
+    if (!archivo) {
+      return;
+    }
+
+    const setSubiendo = tipo === "foto" ? setSubiendoFotoUsuario : setSubiendoPortadaUsuario;
+    const campoFormulario = tipo === "foto" ? "foto" : "portada";
+    const token = sessionStorage.getItem("token");
+
+    setErrorPerfil("");
+    setMensajePerfil("");
+
+    try {
+      setSubiendo(true);
+
+      const cuerpo = new FormData();
+      cuerpo.append(campoFormulario, archivo);
+
+      const respuesta = await fetch(`${API_URL}/auth/perfil/${tipo}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: cuerpo,
+      });
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo subir la imagen.");
+      }
+
+      const usuarioActualizado = {
+        ...usuario,
+        ...(tipo === "foto" ? { fotoPerfil: datos.fotoPerfil } : { portadaUrl: datos.portadaUrl }),
+      };
+
+      sessionStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+      setUsuario(usuarioActualizado);
+      setMensajePerfil(datos.mensaje || "Imagen actualizada correctamente.");
+    } catch (error) {
+      setErrorPerfil(error.message);
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const seleccionarImagenUsuario = (tipo, archivo) => {
+    if (!archivo) {
+      return;
+    }
+
+    setRecorteUsuario({ tipo, urlOriginal: URL.createObjectURL(archivo) });
+  };
+
+  const cerrarRecorteUsuario = () => {
+    if (recorteUsuario) {
+      URL.revokeObjectURL(recorteUsuario.urlOriginal);
+    }
+
+    setRecorteUsuario(null);
+  };
+
+  const confirmarRecorteUsuario = async (blob) => {
+    const tipo = recorteUsuario.tipo;
+    const archivoRecortado = new File([blob], `${tipo}.jpg`, { type: "image/jpeg" });
+
+    cerrarRecorteUsuario();
+    await subirImagenUsuario(tipo, archivoRecortado);
+  };
 
   const cambiarVista = (nuevaVista) => {
     const vistaDestino = nuevaVista === "playlist" ? "biblioteca" : nuevaVista;
@@ -1609,7 +1740,10 @@ function App() {
 
   const seleccionarCancion = (cancion) => {
     registrarCancionReciente(cancion);
-    const audioUrl = cancion.audioUrl || AUDIO_SAMPLES[(cancion.id || 1) % AUDIO_SAMPLES.length];
+    const audioUrl =
+      cancion.id && cancion.audioUrl
+        ? `${API_URL}/canciones/${cancion.id}/audio`
+        : cancion.audioUrl || AUDIO_SAMPLES[(cancion.id || 1) % AUDIO_SAMPLES.length];
     const portada = obtenerPortadaCancionResuelta(cancion);
 
     setCancionActual({
@@ -1629,30 +1763,9 @@ function App() {
     abrirPlayer();
   };
 
-  const abrirPerfilArtista = async (artistaNombre) => {
+  const abrirPerfilArtista = (artistaNombre) => {
     registrarArtistaReciente(artistaNombre);
-    try {
-      setCargandoArtistas(true);
-      const respuesta = await fetch(`${API_URL}/artistas/${encodeURIComponent(artistaNombre)}`);
-      const datos = await leerJsonSeguro(respuesta);
-
-      if (!respuesta.ok) {
-        throw new Error(datos.mensaje || "No se pudo abrir el perfil del artista.");
-      }
-
-      setArtistaSeleccionado(datos.artista || null);
-      setBusqueda("");
-      setBusquedaAbierta(false);
-      setVistaActiva("artista");
-    } catch {
-      const artista = artistasCatalogo.find((item) => item.nombre === artistaNombre);
-      setArtistaSeleccionado(artista || null);
-      setBusqueda("");
-      setBusquedaAbierta(false);
-      setVistaActiva("artista");
-    } finally {
-      setCargandoArtistas(false);
-    }
+    return abrirPerfilPublico({ tipo: "artista", nombre: artistaNombre });
   };
 
   useEffect(() => {
@@ -2013,7 +2126,7 @@ function App() {
         id={vistaActiva === "perfil" ? "perfil" : "inicio"}
       >
         <div className="search-area" ref={searchAreaRef}>
-          {vistaActiva !== "perfil" && (
+          {vistaActiva !== "perfil" && vistaActiva !== "perfil-publico" && (
           <>
           <header className="topbar">
             <div className="logo-pill">iStream</div>
@@ -2636,63 +2749,18 @@ function App() {
               </p>
             )}
           </section>
-        ) : vistaActiva === "artista" ? (
-          <section className="artist-profile-section">
-            <div className="artist-profile-card">
-              {cargandoArtistas && <p className="search-empty">Cargando perfil del artista...</p>}
-              {artistaSeleccionado && (
-                <>
-                  {artistaSeleccionado.portada && (
-                    <div
-                      className="artist-admin-cover-preview artist-profile-cover"
-                      style={{ backgroundImage: `url("${resolverUrlImagen(artistaSeleccionado.portada)}")` }}
-                    />
-                  )}
-                  <div className="artist-profile-header">
-                    <img
-                      className="artist-photo"
-                      src={obtenerFotoArtista(artistaSeleccionado.foto)}
-                      alt={artistaSeleccionado.nombre}
-                    />
-                    <div>
-                      <p className="section-label">Perfil público</p>
-                      <h2>{artistaSeleccionado.nombre}</h2>
-                      <p>{artistaSeleccionado.biografia}</p>
-                    </div>
-                  </div>
-
-                  <div className="artist-profile-grid">
-                    <article className="artist-detail-card">
-                      <h3>Géneros musicales</h3>
-                      <div className="tag-list">
-                        {(artistaSeleccionado.generos || []).map((genero) => (
-                          <span key={genero} className="tag-pill">{genero}</span>
-                        ))}
-                      </div>
-                    </article>
-
-                    <article className="artist-detail-card">
-                      <h3>Álbumes</h3>
-                      <ul>
-                        {(artistaSeleccionado.albums || []).map((album) => (
-                          <li key={album}>{album}</li>
-                        ))}
-                      </ul>
-                    </article>
-
-                    <article className="artist-detail-card">
-                      <h3>Canciones publicadas</h3>
-                      <ul>
-                        {(artistaSeleccionado.canciones || []).map((cancion) => (
-                          <li key={cancion}>{cancion}</li>
-                        ))}
-                      </ul>
-                    </article>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
+        ) : vistaActiva === "perfil-publico" ? (
+          <PerfilPublico
+            perfil={perfilPublico}
+            cargando={cargandoPerfilPublico}
+            error={errorPerfilPublico}
+            usuarioActual={usuario}
+            onSeguir={seguirDesdePerfilPublico}
+            onDejarDeSeguir={dejarDeSeguirDesdePerfilPublico}
+            onAbrirChat={abrirChatConUsuario}
+            onReproducirCancion={reproducirCancionDirecta}
+            onVolver={() => cambiarVista(vistaAnteriorPerfil)}
+          />
         ) : vistaActiva === "artistas" ? (
           <section className="section-block">
             <p className="section-label">Artistas disponibles</p>
@@ -2713,14 +2781,38 @@ function App() {
             </div>
           </section>
         ) : vistaActiva === "social" ? (
-          <Social usuario={usuario} onSesionExpirada={cerrarSesionPorExpiracion} />
+          <Social
+            usuario={usuario}
+            onSesionExpirada={cerrarSesionPorExpiracion}
+            conversacionInicialId={chatInicialId}
+            onConversacionInicialConsumida={() => setChatInicialId(null)}
+          />
         ) : vistaActiva === "perfil-artista" ? (
           <PerfilArtista usuario={usuario} onVerPerfilPublico={abrirPerfilArtista} />
         ) : vistaActiva === "mi-musica" ? (
           <GestionCanciones usuario={usuario} />
         ) : vistaActiva === "perfil" ? (
           <section className="profile-section">
-            <article className="profile-card profile-hero-card">
+            <article className="profile-card profile-hero-card artist-admin-cover-card">
+              <div
+                className="artist-admin-cover-preview"
+                style={portadaPerfilUsuario ? { backgroundImage: `url("${portadaPerfilUsuario}")` } : undefined}
+              >
+                <label className="artist-admin-upload-button artist-admin-upload-button--cover">
+                  {subiendoPortadaUsuario ? "Subiendo..." : "Cambiar portada"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    disabled={subiendoPortadaUsuario}
+                    onChange={(event) => {
+                      seleccionarImagenUsuario("portada", event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+
               <button
                 type="button"
                 className={`profile-settings-btn${mostrarConfiguracion ? " profile-settings-btn--active" : ""}`}
@@ -2730,9 +2822,9 @@ function App() {
               >
                 ⚙
               </button>
-              <div className="profile-head">
+              <div className="profile-head artist-admin-identity">
                 <div
-                  className={`preview-avatar profile-avatar-xl ${
+                  className={`preview-avatar profile-avatar-xl artist-admin-avatar ${
                     fotoPerfilUsuario
                       ? "profile-avatar-xl--photo"
                       : ""
@@ -2745,11 +2837,32 @@ function App() {
                     />
                   )}
                   <span>{usuario.nombre?.charAt(0).toUpperCase() || "U"}</span>
+                  <label className="artist-admin-upload-button artist-admin-upload-button--avatar">
+                    {subiendoFotoUsuario ? "..." : "Cambiar"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      hidden
+                      disabled={subiendoFotoUsuario}
+                      onChange={(event) => {
+                        seleccionarImagenUsuario("foto", event.target.files?.[0]);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
                 </div>
                 <div className="profile-identity">
                   <p className="section-label">PERFIL</p>
                   <h2>{usuario.nombre}</h2>
                   <p>{usuario.correo}</p>
+                  {usuario.biografia && <p>{usuario.biografia}</p>}
+                  <button
+                    type="button"
+                    className="secondary-link-button"
+                    onClick={() => abrirPerfilPublico({ tipo: "usuario", id: usuario.id })}
+                  >
+                    Ver mi perfil público
+                  </button>
                   <div className="profile-meta-line">
                     <span>{usuario.rol || "Usuario"}</span>
                     <span>{resumenPerfil.reproduccionesUltimos7Dias} reproducciones en los ultimos 7 dias</span>
@@ -2864,7 +2977,7 @@ function App() {
                       {!cargandoSeguidores && seguidores.length > 0 && (
                         <ul className="sp-user-list">
                           {seguidores.map((s) => (
-                            <li key={s.id} className={`sp-user-row sp-user-row--clickable${perfilAmigo?.usuario?.id === s.id ? " sp-user-row--active" : ""}`} onClick={() => verPerfilAmigo(s.id)} role="button" tabIndex={0}>
+                            <li key={s.id} className="sp-user-row sp-user-row--clickable" onClick={() => verPerfilAmigo(s.id)} role="button" tabIndex={0}>
                               <span className="sp-avatar">{String(s.nombre || "U").charAt(0).toUpperCase()}</span>
                               <div className="sp-user-info">
                                 <strong>{s.nombre || "Usuario"}</strong>
@@ -2883,7 +2996,7 @@ function App() {
                       {!cargandoSeguidores && siguiendo.length > 0 && (
                         <ul className="sp-user-list">
                           {siguiendo.map((s) => (
-                            <li key={s.id} className={`sp-user-row${perfilAmigo?.usuario?.id === s.id ? " sp-user-row--active" : ""}`}>
+                            <li key={s.id} className="sp-user-row">
                               <button type="button" className="sp-user-clickable" onClick={() => verPerfilAmigo(s.id)}>
                                 <span className="sp-avatar">{String(s.nombre || "U").charAt(0).toUpperCase()}</span>
                                 <strong className="sp-user-name">{s.nombre}</strong>
@@ -2895,76 +3008,6 @@ function App() {
                             </li>
                           ))}
                         </ul>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Friend profile panel */}
-                  {(cargandoPerfilAmigo || perfilAmigo || errorPerfilAmigo) && (
-                    <div className="friend-profile-panel">
-                      {cargandoPerfilAmigo && <p className="sp-follow-empty">Cargando perfil...</p>}
-                      {errorPerfilAmigo && <p className="form-error">{errorPerfilAmigo}</p>}
-                      {!cargandoPerfilAmigo && perfilAmigo && (
-                        <>
-                          <div className="fpp-hero">
-                            <div className="fpp-hero-avatar">{String(perfilAmigo.usuario.nombre || "U").charAt(0).toUpperCase()}</div>
-                            <div className="fpp-hero-identity">
-                              <p className="section-label">PERFIL</p>
-                              <h2 className="fpp-hero-name">{perfilAmigo.usuario.nombre}</h2>
-                              {perfilAmigo.mutuo && <span className="fpp-badge">Amigos mutuos</span>}
-                            </div>
-                            <button type="button" className="sp-tab-close fpp-close" onClick={() => setPerfilAmigo(null)}>✕</button>
-                          </div>
-
-                          {perfilAmigo.privado ? (
-                            <p className="fpp-private">🔒 Este perfil es privado. Solo los seguidores mutuos pueden ver su actividad.</p>
-                          ) : (
-                            <div className="fpp-sections">
-                              <div className="fpp-section">
-                                <p className="fpp-section-label">Escuchado recientemente</p>
-                                {perfilAmigo.historial.length === 0
-                                  ? <p className="sp-follow-empty">Sin actividad reciente.</p>
-                                  : <ul className="fpp-list">
-                                      {perfilAmigo.historial.map((h, i) => (
-                                        <li key={i} className="fpp-item">
-                                          <span className="fpp-item-title">{h.titulo}</span>
-                                          <span className="fpp-item-sub">{h.artista}{h.album ? ` · ${h.album}` : ""}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                }
-                              </div>
-                              <div className="fpp-section">
-                                <p className="fpp-section-label">Canciones favoritas</p>
-                                {perfilAmigo.favoritos.length === 0
-                                  ? <p className="sp-follow-empty">Sin favoritos.</p>
-                                  : <ul className="fpp-list">
-                                      {perfilAmigo.favoritos.map((f, i) => (
-                                        <li key={i} className="fpp-item">
-                                          <span className="fpp-item-title">{f.titulo}</span>
-                                          <span className="fpp-item-sub">{f.artista}{f.album ? ` · ${f.album}` : ""}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                }
-                              </div>
-                              <div className="fpp-section">
-                                <p className="fpp-section-label">Artistas más escuchados</p>
-                                {perfilAmigo.artistasFavoritos.length === 0
-                                  ? <p className="sp-follow-empty">Sin datos.</p>
-                                  : <ul className="fpp-artists">
-                                      {perfilAmigo.artistasFavoritos.map((a, i) => (
-                                        <li key={i} className="fpp-artist-pill">
-                                          <span>{a.artista}</span>
-                                          <small>{a.reproducciones} reproducciones</small>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                }
-                              </div>
-                            </div>
-                          )}
-                        </>
                       )}
                     </div>
                   )}
@@ -3068,6 +3111,18 @@ function App() {
                     </label>
                   </div>
 
+                  <label className="field artist-admin-bio-field">
+                    <span>Biografía</span>
+                    <textarea
+                      name="biografia"
+                      value={perfilForm.biografia}
+                      onChange={actualizarCampo}
+                      placeholder="Contales a los demás quién sos"
+                      rows={4}
+                      maxLength={500}
+                    />
+                  </label>
+
                   {errorPerfil && <p className="form-error">{errorPerfil}</p>}
                   {mensajePerfil && <p className="form-success">{mensajePerfil}</p>}
 
@@ -3117,6 +3172,19 @@ function App() {
                 )}
               </div>
             </div>
+
+            {recorteUsuario && (
+              <RecortarImagenModal
+                imagenUrl={recorteUsuario.urlOriginal}
+                aspecto={CONFIG_RECORTE[recorteUsuario.tipo].aspecto}
+                anchoSalida={CONFIG_RECORTE[recorteUsuario.tipo].anchoSalida}
+                altoSalida={CONFIG_RECORTE[recorteUsuario.tipo].altoSalida}
+                forma={CONFIG_RECORTE[recorteUsuario.tipo].forma}
+                titulo={CONFIG_RECORTE[recorteUsuario.tipo].titulo}
+                onCancelar={cerrarRecorteUsuario}
+                onConfirmar={confirmarRecorteUsuario}
+              />
+            )}
           </section>
         ) : (
           <>

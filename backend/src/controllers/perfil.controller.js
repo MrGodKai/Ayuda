@@ -1,4 +1,9 @@
 const pool = require("../config/db");
+const {
+  rutaPublicaFotoUsuario,
+  rutaPublicaPortadaUsuario,
+  eliminarArchivoPublico,
+} = require("../middleware/upload.middleware");
 
 function normalizarEmail(email) {
   return String(email || "").trim().toLowerCase();
@@ -10,12 +15,14 @@ function validarActualizacionPerfil({
   fotoPerfil,
   telefono,
   ciudad,
+  biografia,
 }) {
   const nombreLimpio = String(nombre || "").trim();
   const correoLimpio = String(correo || "").trim();
   const fotoLimpia = String(fotoPerfil || "").trim();
   const telefonoLimpio = String(telefono || "").trim();
   const ciudadLimpia = String(ciudad || "").trim();
+  const biografiaLimpia = String(biografia || "").trim();
 
   if (!nombreLimpio) {
     return "El nombre es obligatorio.";
@@ -58,7 +65,7 @@ function validarActualizacionPerfil({
 
   if (
     fotoLimpia &&
-    !/^https?:\/\/\S+$/i.test(fotoLimpia)
+    !/^(https?:\/\/\S+|\/uploads\/[\w\-./]+)$/i.test(fotoLimpia)
   ) {
     return "La foto de perfil debe ser una URL válida.";
   }
@@ -69,6 +76,10 @@ function validarActualizacionPerfil({
 
   if (ciudadLimpia.length > 100) {
     return "La ciudad no puede superar 100 caracteres.";
+  }
+
+  if (biografiaLimpia.length > 500) {
+    return "La biografía no puede superar 500 caracteres.";
   }
 
   return null;
@@ -96,6 +107,8 @@ exports.obtenerPerfil = async (req, res) => {
          estado,
          perfil_privado,
          foto_perfil,
+         portada_url,
+         biografia,
          telefono,
          ciudad,
          creado_en,
@@ -123,6 +136,8 @@ exports.obtenerPerfil = async (req, res) => {
         estado: Boolean(usuario.estado),
         perfilPrivado: Boolean(usuario.perfil_privado),
         fotoPerfil: usuario.foto_perfil,
+        portadaUrl: usuario.portada_url,
+        biografia: usuario.biografia || "",
         telefono: usuario.telefono,
         ciudad: usuario.ciudad,
         creadoEn: usuario.creado_en,
@@ -157,6 +172,7 @@ exports.actualizarPerfil = async (req, res) => {
       fotoPerfil,
       telefono,
       ciudad,
+      biografia,
     } = req.body;
 
     const errorValidacion = validarActualizacionPerfil({
@@ -165,6 +181,7 @@ exports.actualizarPerfil = async (req, res) => {
       fotoPerfil,
       telefono,
       ciudad,
+      biografia,
     });
 
     if (errorValidacion) {
@@ -181,6 +198,8 @@ exports.actualizarPerfil = async (req, res) => {
       String(telefono || "").trim() || null;
     const ciudadLimpia =
       String(ciudad || "").trim() || null;
+    const biografiaLimpia =
+      String(biografia || "").trim() || null;
 
     // Comprobar que el usuario exista.
     const [usuarioEncontrado] = await pool.execute(
@@ -222,7 +241,8 @@ exports.actualizarPerfil = async (req, res) => {
          correo = ?,
          foto_perfil = ?,
          telefono = ?,
-         ciudad = ?
+         ciudad = ?,
+         biografia = ?
        WHERE id_usuario = ?`,
       [
         nombreLimpio,
@@ -230,6 +250,7 @@ exports.actualizarPerfil = async (req, res) => {
         fotoLimpia,
         telefonoLimpio,
         ciudadLimpia,
+        biografiaLimpia,
         idUsuario,
       ]
     );
@@ -244,6 +265,8 @@ exports.actualizarPerfil = async (req, res) => {
          estado,
          perfil_privado,
          foto_perfil,
+         portada_url,
+         biografia,
          telefono,
          ciudad,
          creado_en,
@@ -266,6 +289,8 @@ exports.actualizarPerfil = async (req, res) => {
         estado: Boolean(usuario.estado),
         perfilPrivado: Boolean(usuario.perfil_privado),
         fotoPerfil: usuario.foto_perfil,
+        portadaUrl: usuario.portada_url,
+        biografia: usuario.biografia || "",
         telefono: usuario.telefono,
         ciudad: usuario.ciudad,
         creadoEn: usuario.creado_en,
@@ -320,6 +345,98 @@ exports.actualizarPrivacidad = async (req, res) => {
     console.error("Error al actualizar privacidad:", error);
     return res.status(500).json({
       mensaje: "No se pudo actualizar la configuración de privacidad.",
+    });
+  }
+};
+
+exports.subirFotoPerfilUsuario = async (req, res) => {
+  try {
+    const idUsuario = req.usuario?.id;
+
+    if (!idUsuario) {
+      return res.status(401).json({
+        mensaje: "No se pudo identificar al usuario.",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        mensaje: "Debe adjuntar una imagen de perfil.",
+      });
+    }
+
+    const [filas] = await pool.execute(
+      `SELECT foto_perfil FROM usuarios WHERE id_usuario = ? LIMIT 1`,
+      [idUsuario]
+    );
+
+    const fotoAnterior = filas[0]?.foto_perfil || null;
+    const nuevaRuta = rutaPublicaFotoUsuario(req.file.filename);
+
+    await pool.execute(
+      `UPDATE usuarios SET foto_perfil = ? WHERE id_usuario = ?`,
+      [nuevaRuta, idUsuario]
+    );
+
+    if (fotoAnterior) {
+      eliminarArchivoPublico(fotoAnterior);
+    }
+
+    return res.status(200).json({
+      mensaje: "Foto de perfil actualizada correctamente.",
+      fotoPerfil: nuevaRuta,
+    });
+  } catch (error) {
+    console.error("Error al subir la foto de perfil del usuario:", error);
+
+    return res.status(500).json({
+      mensaje: "No se pudo subir la foto de perfil.",
+    });
+  }
+};
+
+exports.subirPortadaUsuario = async (req, res) => {
+  try {
+    const idUsuario = req.usuario?.id;
+
+    if (!idUsuario) {
+      return res.status(401).json({
+        mensaje: "No se pudo identificar al usuario.",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        mensaje: "Debe adjuntar una imagen de portada.",
+      });
+    }
+
+    const [filas] = await pool.execute(
+      `SELECT portada_url FROM usuarios WHERE id_usuario = ? LIMIT 1`,
+      [idUsuario]
+    );
+
+    const portadaAnterior = filas[0]?.portada_url || null;
+    const nuevaRuta = rutaPublicaPortadaUsuario(req.file.filename);
+
+    await pool.execute(
+      `UPDATE usuarios SET portada_url = ? WHERE id_usuario = ?`,
+      [nuevaRuta, idUsuario]
+    );
+
+    if (portadaAnterior) {
+      eliminarArchivoPublico(portadaAnterior);
+    }
+
+    return res.status(200).json({
+      mensaje: "Portada actualizada correctamente.",
+      portadaUrl: nuevaRuta,
+    });
+  } catch (error) {
+    console.error("Error al subir la portada del usuario:", error);
+
+    return res.status(500).json({
+      mensaje: "No se pudo subir la portada.",
     });
   }
 };

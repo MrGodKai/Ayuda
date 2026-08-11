@@ -8,7 +8,6 @@ DROP TABLE IF EXISTS canciones_favoritas;
 DROP TABLE IF EXISTS historial_reproducciones;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS relaciones_amistad;
-DROP TABLE IF EXISTS mensajes;
 DROP TABLE IF EXISTS seguidores_usuarios;
 DROP TABLE IF EXISTS canciones;
 DROP TABLE IF EXISTS artistas;
@@ -27,11 +26,13 @@ CREATE TABLE usuarios (
     ) NOT NULL DEFAULT 'usuario',
 
     estado BOOLEAN NOT NULL DEFAULT TRUE,
-    perfil_privado BOOLEAN NOT NULL DEFAULT FALSE,
-    ultima_actividad TIMESTAMP NULL DEFAULT NULL,
     foto_perfil VARCHAR(500) NULL,
+    portada_url VARCHAR(500) NULL,
+    biografia VARCHAR(500) NULL,
     telefono VARCHAR(30) NULL,
     ciudad VARCHAR(100) NULL,
+    perfil_privado BOOLEAN NOT NULL DEFAULT FALSE,
+    ultima_actividad TIMESTAMP NULL DEFAULT NULL,
 
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -49,6 +50,7 @@ CREATE TABLE artistas (
     foto_url VARCHAR(500) NULL,
     portada_url VARCHAR(500) NULL,
     generos VARCHAR(255) NULL,
+    fecha_debut DATE NULL,
     estado BOOLEAN NOT NULL DEFAULT TRUE,
 
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -225,57 +227,118 @@ CREATE TABLE seguidores_usuarios (
         ON UPDATE CASCADE
 );
 
-CREATE TABLE mensajes (
-    id_mensaje BIGINT AUTO_INCREMENT PRIMARY KEY,
-    id_usuario_emisor INT NOT NULL,
-    id_usuario_receptor INT NOT NULL,
-    contenido VARCHAR(2000) NOT NULL,
-    leido_en TIMESTAMP NULL DEFAULT NULL,
-    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX idx_mensajes_emisor_receptor_fecha (id_usuario_emisor, id_usuario_receptor, creado_en),
-    INDEX idx_mensajes_receptor_emisor_fecha (id_usuario_receptor, id_usuario_emisor, creado_en),
-
-    CONSTRAINT fk_mensajes_emisor
-        FOREIGN KEY (id_usuario_emisor)
-        REFERENCES usuarios(id_usuario)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE,
-
-    CONSTRAINT fk_mensajes_receptor
-        FOREIGN KEY (id_usuario_receptor)
-        REFERENCES usuarios(id_usuario)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
+INSERT INTO artistas (nombre, biografia, foto_url, generos, estado) VALUES
+(
+  'Kevin MacLeod',
+  'Compositor estadounidense conocido por su colección de más de 2000 pistas musicales libres de derechos. Sus obras abarcan Electronic, Jazz, World Music y Soundtrack, todas bajo licencia Creative Commons CC BY 4.0.',
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Kevin_MacLeod_%28headshot%29.jpg/220px-Kevin_MacLeod_%28headshot%29.jpg',
+  'Electronic, Soundtrack, Jazz, World, Easy Listening',
+  TRUE
+),
+(
+  'Komiku',
+  'Artista de música libre que publica todos sus álbumes bajo licencia CC0 (Dominio Público). Sus composiciones abarcan Folk, Chiptune y Soundtrack, ideales para videojuegos, cine y proyectos creativos.',
+  'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+  'Folk, Soundtrack, Chiptune, Instrumental',
+  TRUE
 );
 
-INSERT INTO artistas (nombre, biografia, foto_url, generos, estado) VALUES
-('Artista Neon Vox', 'Productor de synthwave y electrónica atmosférica independiente.', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80', 'Synthwave, Indie', TRUE),
-('Artista Pop Nova', 'Cantante pop con influencias del R&B contemporáneo.', 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&q=80', 'Pop, Electrónica', TRUE),
-('Artista Ritmo Sur', 'Compositor de música latina y fusión tropical.', 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&q=80', 'Latino, Alternativo', TRUE),
-('Artista Indie Craft', 'Guitarrista indie con una propuesta auténtica y emotiva.', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80', 'Indie, Rock', TRUE),
-('Artista Pulso Digital', 'Productor de electrónica y música para videojuegos.', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80', 'Electrónica, Synthwave', TRUE),
-('Artista Ruta Alterna', 'Banda alternativa con letras introspectivas.', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80', 'Alternativo, Indie', TRUE),
-('Artista Roca Viva', 'Grupo de rock con energía y riffs poderosos.', 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&q=80', 'Rock, Pop', TRUE),
-('Artista Soul River', 'Vocalista de R&B y soul con influencia jazzística.', 'https://images.unsplash.com/photo-1504704911898-68304a7d2807?w=400&q=80', 'R&B, Soul', TRUE),
-('Artista Alma Jazz', 'Pianista de jazz moderno con exploración armónica.', 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400&q=80', 'Soul, Jazz', TRUE),
-('Artista Beat Flow', 'MC y productor de hip hop underground.', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80', 'Hip Hop, Urban', TRUE);
-
-INSERT INTO canciones (id_artista, titulo, artista, album, genero, duracion_segundos, portada_url, audio_url, descripcion, estado) VALUES
-(1, 'Horizonte Neon', 'Artista Neon Vox', 'Zeta Sessions', 'Synthwave', 214, 'https://picsum.photos/seed/neon-vox/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'Synthwave con atmósferas futuristas.', TRUE),
-(2, 'Marea Pop', 'Artista Pop Nova', 'Nova Vol. 1', 'Pop', 197, 'https://picsum.photos/seed/pop-nova/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', 'Pop contemporáneo con energía positiva.', TRUE),
-(3, 'Cumbia Eléctrica', 'Artista Ritmo Sur', 'Onda Latina', 'Latino', 231, 'https://picsum.photos/seed/ritmo-sur/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', 'Fusión de cumbia y electrónica.', TRUE),
-(4, 'Calles de Colores', 'Artista Indie Craft', 'Resplandor Indie', 'Indie', 188, 'https://picsum.photos/seed/indie-craft/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 'Indie con guitarras melancólicas.', TRUE),
-(5, 'Código Pulso', 'Artista Pulso Digital', 'Mistline', 'Electrónica', 202, 'https://picsum.photos/seed/pulso-digital/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 'Electrónica de alta energía.', TRUE),
-(6, 'Deriva Alterna', 'Artista Ruta Alterna', 'Ternario', 'Alternativo', 176, 'https://picsum.photos/seed/ruta-alterna/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', 'Alternativo introspectivo y melódico.', TRUE),
-(7, 'Riff de Acero', 'Artista Roca Viva', 'Kilo Rock', 'Rock', 220, 'https://picsum.photos/seed/roca-viva/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', 'Rock con riffs contundentes.', TRUE),
-(8, 'Río Soul', 'Artista Soul River', 'Sombras Soul', 'R&B', 204, 'https://picsum.photos/seed/soul-river/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', 'R&B suave con melodías vocales.', TRUE),
-(9, 'Camino de Jazz', 'Artista Alma Jazz', 'Vector Jazz', 'Soul', 193, 'https://picsum.photos/seed/alma-jazz/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', 'Jazz moderno con piano prominente.', TRUE),
-(10, 'Barrio Beat', 'Artista Beat Flow', 'Radio Hip', 'Hip Hop', 209, 'https://picsum.photos/seed/beat-flow/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', 'Hip hop underground con flow urbano.', TRUE),
-(1, 'Neon Drive', 'Artista Neon Vox', 'Zeta Sessions', 'Synthwave', 198, 'https://picsum.photos/seed/neon-vox2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3', 'Synthwave acelerado y electrizante.', TRUE),
-(2, 'Luna Brillante', 'Artista Pop Nova', 'Nova Vol. 2', 'Pop', 211, 'https://picsum.photos/seed/pop-nova2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3', 'Balada pop con coros pegajosos.', TRUE),
-(3, 'Salsa Urbana', 'Artista Ritmo Sur', 'Onda Latina 2', 'Latino', 225, 'https://picsum.photos/seed/ritmo-sur2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3', 'Salsa moderna con sabor urbano.', TRUE),
-(5, 'Frecuencia 404', 'Artista Pulso Digital', 'Glitch World', 'Electrónica', 189, 'https://picsum.photos/seed/pulso-digital2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3', 'Electrónica experimental con glitches.', TRUE),
-(7, 'Tormenta de Rock', 'Artista Roca Viva', 'Kilo Rock 2', 'Rock', 237, 'https://picsum.photos/seed/roca-viva2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3', 'Rock intenso con solos de guitarra.', TRUE),
-(8, 'Midnight Soul', 'Artista Soul River', 'Deep River', 'R&B', 218, 'https://picsum.photos/seed/soul-river2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3', 'R&B nocturno y sensual.', TRUE),
-(10, 'Flow Nocturno', 'Artista Beat Flow', 'Underground', 'Hip Hop', 195, 'https://picsum.photos/seed/beat-flow2/300/300', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3', 'Hip hop con flow lírico y producción oscura.', TRUE);
+INSERT INTO canciones
+  (id_artista, titulo, artista, album, genero, duracion_segundos, portada_url, audio_url, descripcion, estado)
+VALUES
+-- Kevin MacLeod – Ferret (2017)
+(1, 'Android Sock Hop', 'Kevin MacLeod', 'Ferret', 'Soft Rock', 285,
+ 'https://picsum.photos/seed/km-ferret/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Ferret_2017_FullAlbum/Ferret/Kevin%20MacLeod%20-%2001%20-%20Android%20Sock%20Hop.mp3',
+ 'Pista de Soft Rock del álbum Ferret. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Robobozo', 'Kevin MacLeod', 'Ferret', 'Electronic', 206,
+ 'https://picsum.photos/seed/km-ferret/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Ferret_2017_FullAlbum/Ferret/Kevin%20MacLeod%20-%2002%20-%20Robobozo.mp3',
+ 'Electrónica retro del álbum Ferret. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Zazie', 'Kevin MacLeod', 'Ferret', 'Easy Listening', 213,
+ 'https://picsum.photos/seed/km-ferret/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Ferret_2017_FullAlbum/Ferret/Kevin%20MacLeod%20-%2003%20-%20Zazie.mp3',
+ 'Easy Listening del álbum Ferret. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Teddy Bear Waltz', 'Kevin MacLeod', 'Ferret', 'Soundtrack', 195,
+ 'https://picsum.photos/seed/km-ferret/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Ferret_2017_FullAlbum/Ferret/Kevin%20MacLeod%20-%2005%20-%20Teddy%20Bear%20Waltz.mp3',
+ 'Vals cinematográfico del álbum Ferret. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Cheery Monday', 'Kevin MacLeod', 'Ferret', 'Easy Listening', 80,
+ 'https://picsum.photos/seed/km-ferret/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Ferret_2017_FullAlbum/Ferret/Kevin%20MacLeod%20-%2006%20-%20Cheery%20Monday.mp3',
+ 'Pista alegre del álbum Ferret. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Jerry Five', 'Kevin MacLeod', 'Ferret', 'Electronic', 160,
+ 'https://picsum.photos/seed/km-ferret/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Ferret_2017_FullAlbum/Ferret/Kevin%20MacLeod%20-%2007%20-%20Jerry%20Five.mp3',
+ 'Electronic del álbum Ferret. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Industrious Ferret', 'Kevin MacLeod', 'Ferret', 'Soundtrack', 217,
+ 'https://picsum.photos/seed/km-ferret/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Ferret_2017_FullAlbum/Ferret/Kevin%20MacLeod%20-%2008%20-%20Industrious%20Ferret.mp3',
+ 'Soundtrack del álbum Ferret. Kevin MacLeod – CC BY 4.0.', TRUE),
+-- Kevin MacLeod – Vadodara (2014)
+(1, 'Asian Drums', 'Kevin MacLeod', 'Vadodara', 'Soundtrack', 139,
+ 'https://picsum.photos/seed/km-vadodara/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Utility_Vadodara_2014_FullAlbum/Vadodara/Kevin%20MacLeod%20-%2001%20-%20Asian%20Drums.mp3',
+ 'Percusiones asiáticas del álbum Vadodara. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Balzan Groove', 'Kevin MacLeod', 'Vadodara', 'World', 125,
+ 'https://picsum.photos/seed/km-vadodara/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Utility_Vadodara_2014_FullAlbum/Vadodara/Kevin%20MacLeod%20-%2002%20-%20Balzan%20Groove.mp3',
+ 'Groove mundial del álbum Vadodara. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Big Mojo', 'Kevin MacLeod', 'Vadodara', 'World', 157,
+ 'https://picsum.photos/seed/km-vadodara/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Utility_Vadodara_2014_FullAlbum/Vadodara/Kevin%20MacLeod%20-%2003%20-%20Big%20Mojo.mp3',
+ 'World Music del álbum Vadodara. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Desert City', 'Kevin MacLeod', 'Vadodara', 'World', 89,
+ 'https://picsum.photos/seed/km-vadodara/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Utility_Vadodara_2014_FullAlbum/Vadodara/Kevin%20MacLeod%20-%2007%20-%20Desert%20City.mp3',
+ 'Ambiente de ciudad desértica del álbum Vadodara. Kevin MacLeod – CC BY 4.0.', TRUE),
+(1, 'Eastern Thought', 'Kevin MacLeod', 'Vadodara', 'World', 262,
+ 'https://picsum.photos/seed/km-vadodara/300/300',
+ 'https://archive.org/download/Kevin-MacLeod_Utility_Vadodara_2014_FullAlbum/Vadodara/Kevin%20MacLeod%20-%2010%20-%20Eastern%20Thought.mp3',
+ 'Meditación oriental del álbum Vadodara. Kevin MacLeod – CC BY 4.0.', TRUE),
+-- Kevin MacLeod – Single
+(1, 'Stringed Disco', 'Kevin MacLeod', 'Disco and Lounge', 'Disco', 175,
+ 'https://picsum.photos/seed/km-disco/300/300',
+ 'https://archive.org/download/kevin-macleod-stringed-disco/Kevin%20MacLeod%20-%20Stringed%20Disco.mp3',
+ 'Disco funky con cuerdas. Kevin MacLeod – CC BY 4.0.', TRUE),
+-- Komiku – Poupi's incredible adventures ! (CC0)
+(2, 'Cat City', 'Komiku', "Poupi's incredible adventures !", 'Folk', 128,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_15_-_Cat_City.mp3',
+ 'Música de la Ciudad de los Gatos. Komiku – CC0.', TRUE),
+(2, 'Swimming with the Fish', 'Komiku', "Poupi's incredible adventures !", 'Folk', 172,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_39_-_Swimming_with_the_fish.mp3',
+ 'Ambiente submarino relajante. Komiku – CC0.', TRUE),
+(2, 'Love Planet', 'Komiku', "Poupi's incredible adventures !", 'Folk', 80,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_32_-_Love_Planet.mp3',
+ 'El Planeta Amor en versión chiptune. Komiku – CC0.', TRUE),
+(2, 'Serenity Temple', 'Komiku', "Poupi's incredible adventures !", 'Folk', 96,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_34_-_Serenity_Temple.mp3',
+ 'El templo de la serenidad. Komiku – CC0.', TRUE),
+(2, 'Travel to the Horizon', 'Komiku', "Poupi's incredible adventures !", 'Folk', 96,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_43_-_Travel_to_the_Horizon.mp3',
+ 'Viaje hacia el horizonte. Komiku – CC0.', TRUE),
+(2, 'The Horizon', 'Komiku', "Poupi's incredible adventures !", 'Folk', 65,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_45_-_The_Horizon.mp3',
+ 'El horizonte al atardecer. Komiku – CC0.', TRUE),
+(2, 'The Beach', 'Komiku', "Poupi's incredible adventures !", 'Folk', 77,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_47_-_The_Beach.mp3',
+ 'La playa tranquila. Komiku – CC0.', TRUE),
+(2, 'Quiet Saturday', 'Komiku', "Poupi's incredible adventures !", 'Folk', 113,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_57_-_Quiet_Saturday.mp3',
+ 'Un sábado tranquilo en casa de la abuela. Komiku – CC0.', TRUE),
+(2, 'Cave of Time', 'Komiku', "Poupi's incredible adventures !", 'Folk', 166,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_52_-_Cave_of_time.mp3',
+ 'La cueva del tiempo, tensa y misteriosa. Komiku – CC0.', TRUE),
+(2, 'Escaping like Indiana Jones', 'Komiku', "Poupi's incredible adventures !", 'Folk', 96,
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/a0606555560_16.jpg',
+ 'https://archive.org/download/Komiku-Poupis_incredible_adventures/Komiku_-_54_-_Escaping_like_Indiana_Jones.mp3',
+ 'Huida épica estilo Indiana Jones. Komiku – CC0.', TRUE);

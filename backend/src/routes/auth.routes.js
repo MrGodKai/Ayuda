@@ -14,6 +14,8 @@ const {
   obtenerPerfil,
   actualizarPerfil,
   actualizarPrivacidad,
+  subirFotoPerfilUsuario,
+  subirPortadaUsuario,
 } = require(
   "../controllers/perfil.controller"
 );
@@ -24,6 +26,14 @@ const verificarToken = require(
 
 const limitarIntentosLogin = require(
   "../middleware/auth-rate-limit.middleware"
+);
+
+const {
+  uploadFotoUsuario,
+  uploadPortadaUsuario,
+  manejarErroresUpload,
+} = require(
+  "../middleware/upload.middleware"
 );
 
 const {
@@ -82,6 +92,20 @@ router.patch(
   "/privacidad",
   verificarToken,
   actualizarPrivacidad
+);
+
+router.post(
+  "/perfil/foto",
+  verificarToken,
+  manejarErroresUpload(uploadFotoUsuario.single("foto")),
+  subirFotoPerfilUsuario
+);
+
+router.post(
+  "/perfil/portada",
+  verificarToken,
+  manejarErroresUpload(uploadPortadaUsuario.single("portada")),
+  subirPortadaUsuario
 );
 
 module.exports = router;

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import RecortarImagenModal from "./RecortarImagenModal";
+import { CONFIG_RECORTE } from "../utils/configRecorte";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -7,6 +9,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
   const [guardando, setGuardando] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [subiendoPortada, setSubiendoPortada] = useState(false);
+  const [recorte, setRecorte] = useState(null);
 
   const [mensajeError, setMensajeError] = useState("");
   const [mensajeExito, setMensajeExito] = useState("");
@@ -19,6 +22,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
     nombreArtistico: "",
     biografia: "",
     generos: [],
+    fechaDebut: "",
   });
 
   const construirUrlImagen = (ruta) => {
@@ -67,6 +71,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
         nombreArtistico: datosPerfil.perfil?.nombreArtistico || "",
         biografia: datosPerfil.perfil?.biografia || "",
         generos: datosPerfil.perfil?.generos || [],
+        fechaDebut: datosPerfil.perfil?.fechaDebut || "",
       });
     } catch (error) {
       setMensajeError(error.message);
@@ -143,6 +148,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
           nombreArtistico: formulario.nombreArtistico.trim(),
           biografia: formulario.biografia.trim(),
           generos: formulario.generos,
+          fechaDebut: formulario.fechaDebut || null,
         }),
       });
 
@@ -156,6 +162,7 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
         nombreArtistico: datos.perfil.nombreArtistico,
         biografia: datos.perfil.biografia,
         generos: datos.perfil.generos,
+        fechaDebut: datos.perfil.fechaDebut || "",
       });
       setMensajeExito(datos.mensaje || "Perfil de artista actualizado correctamente.");
     } catch (error) {
@@ -209,6 +216,30 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
     }
   };
 
+  const seleccionarImagen = (tipo, archivo) => {
+    if (!archivo) {
+      return;
+    }
+
+    setRecorte({ tipo, urlOriginal: URL.createObjectURL(archivo) });
+  };
+
+  const cerrarRecorte = () => {
+    if (recorte) {
+      URL.revokeObjectURL(recorte.urlOriginal);
+    }
+
+    setRecorte(null);
+  };
+
+  const confirmarRecorte = async (blob) => {
+    const tipo = recorte.tipo;
+    const archivoRecortado = new File([blob], `${tipo}.jpg`, { type: "image/jpeg" });
+
+    cerrarRecorte();
+    await subirImagen(tipo, archivoRecortado);
+  };
+
   if (usuario?.rol !== "artista") {
     return (
       <section className="profile-section">
@@ -237,7 +268,10 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
               accept="image/jpeg,image/png,image/webp"
               hidden
               disabled={subiendoPortada}
-              onChange={(event) => subirImagen("portada", event.target.files?.[0])}
+              onChange={(event) => {
+                seleccionarImagen("portada", event.target.files?.[0]);
+                event.target.value = "";
+              }}
             />
           </label>
         </div>
@@ -257,7 +291,10 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
                 accept="image/jpeg,image/png,image/webp"
                 hidden
                 disabled={subiendoFoto}
-                onChange={(event) => subirImagen("foto", event.target.files?.[0])}
+                onChange={(event) => {
+                  seleccionarImagen("foto", event.target.files?.[0]);
+                  event.target.value = "";
+                }}
               />
             </label>
           </div>
@@ -297,6 +334,17 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
                   value={formulario.nombreArtistico}
                   onChange={actualizarCampo}
                   placeholder="Nombre con el que te conocerán en iStream"
+                />
+              </label>
+
+              <label className="field">
+                <span>Fecha de debut</span>
+                <input
+                  type="date"
+                  name="fechaDebut"
+                  value={formulario.fechaDebut}
+                  onChange={actualizarCampo}
+                  max={new Date().toISOString().slice(0, 10)}
                 />
               </label>
             </div>
@@ -344,6 +392,19 @@ function PerfilArtista({ usuario, onVerPerfilPublico }) {
           </>
         )}
       </form>
+
+      {recorte && (
+        <RecortarImagenModal
+          imagenUrl={recorte.urlOriginal}
+          aspecto={CONFIG_RECORTE[recorte.tipo].aspecto}
+          anchoSalida={CONFIG_RECORTE[recorte.tipo].anchoSalida}
+          altoSalida={CONFIG_RECORTE[recorte.tipo].altoSalida}
+          forma={CONFIG_RECORTE[recorte.tipo].forma}
+          titulo={CONFIG_RECORTE[recorte.tipo].titulo}
+          onCancelar={cerrarRecorte}
+          onConfirmar={confirmarRecorte}
+        />
+      )}
     </section>
   );
 }

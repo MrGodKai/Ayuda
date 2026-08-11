@@ -15,11 +15,30 @@ const SELECT_PERFIL = `
     foto_url,
     portada_url,
     generos,
+    fecha_debut,
     estado,
     creado_en,
     actualizado_en
   FROM artistas
 `;
+
+function formatearFechaDebut(fecha) {
+  if (!fecha) {
+    return null;
+  }
+
+  const fechaObjeto = new Date(fecha);
+
+  if (Number.isNaN(fechaObjeto.getTime())) {
+    return null;
+  }
+
+  const anio = fechaObjeto.getUTCFullYear();
+  const mes = String(fechaObjeto.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(fechaObjeto.getUTCDate()).padStart(2, "0");
+
+  return `${anio}-${mes}-${dia}`;
+}
 
 function mapearPerfilArtista(fila) {
   return {
@@ -32,6 +51,7 @@ function mapearPerfilArtista(fila) {
       .split(",")
       .map((genero) => genero.trim())
       .filter(Boolean),
+    fechaDebut: formatearFechaDebut(fila.fecha_debut),
     estado: Boolean(fila.estado),
     creadoEn: fila.creado_en,
     actualizadoEn: fila.actualizado_en,
@@ -87,9 +107,10 @@ async function obtenerOcrearPerfil(idUsuario, nombreUsuario) {
   return filasNuevas[0];
 }
 
-function validarPerfilArtista({ nombreArtistico, biografia, generos }) {
+function validarPerfilArtista({ nombreArtistico, biografia, generos, fechaDebut }) {
   const nombreLimpio = String(nombreArtistico || "").trim();
   const biografiaLimpia = String(biografia || "").trim();
+  const fechaDebutLimpia = String(fechaDebut || "").trim();
 
   if (!nombreLimpio) {
     return "El nombre artístico es obligatorio.";
@@ -125,6 +146,18 @@ function validarPerfilArtista({ nombreArtistico, biografia, generos }) {
 
   if (generosInvalidos.length > 0) {
     return `Los siguientes géneros no son válidos: ${generosInvalidos.join(", ")}.`;
+  }
+
+  if (fechaDebutLimpia) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaDebutLimpia)) {
+      return "La fecha de debut no tiene un formato válido.";
+    }
+
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    if (fechaDebutLimpia > hoy) {
+      return "La fecha de debut no puede ser futura.";
+    }
   }
 
   return null;
@@ -176,12 +209,13 @@ exports.actualizarMiPerfilArtista = async (req, res) => {
       });
     }
 
-    const { nombreArtistico, biografia, generos } = req.body;
+    const { nombreArtistico, biografia, generos, fechaDebut } = req.body;
 
     const errorValidacion = validarPerfilArtista({
       nombreArtistico,
       biografia,
       generos,
+      fechaDebut,
     });
 
     if (errorValidacion) {
@@ -198,6 +232,7 @@ exports.actualizarMiPerfilArtista = async (req, res) => {
     const nombreLimpio = String(nombreArtistico).trim();
     const biografiaLimpia = String(biografia).trim();
     const generosTexto = [...new Set(generos)].join(", ");
+    const fechaDebutLimpia = String(fechaDebut || "").trim() || null;
 
     const [choqueNombre] = await pool.execute(
       `SELECT id_artista
@@ -220,12 +255,14 @@ exports.actualizarMiPerfilArtista = async (req, res) => {
        SET
          nombre = ?,
          biografia = ?,
-         generos = ?
+         generos = ?,
+         fecha_debut = ?
        WHERE id_artista = ?`,
       [
         nombreLimpio,
         biografiaLimpia,
         generosTexto,
+        fechaDebutLimpia,
         perfilActual.id_artista,
       ]
     );

@@ -10,6 +10,7 @@ const { ROLES, autorizarRoles } = require(
 
 const {
   obtenerCancionesPopulares,
+  transmitirAudioCancion,
 } = require(
   "../controllers/canciones.controller"
 );
@@ -38,6 +39,16 @@ router.get(
   "/populares",
   verificarToken,
   obtenerCancionesPopulares
+);
+
+/*
+ * Sin verificarToken a propósito: un <audio src="..."> del navegador
+ * no puede mandar el header Authorization, igual que ya pasa con los
+ * archivos servidos desde /uploads.
+ */
+router.get(
+  "/:id/audio",
+  transmitirAudioCancion
 );
 
 router.get(

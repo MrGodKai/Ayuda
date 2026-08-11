@@ -1740,7 +1740,10 @@ function App() {
 
   const seleccionarCancion = (cancion) => {
     registrarCancionReciente(cancion);
-    const audioUrl = cancion.audioUrl || AUDIO_SAMPLES[(cancion.id || 1) % AUDIO_SAMPLES.length];
+    const audioUrl =
+      cancion.id && cancion.audioUrl
+        ? `${API_URL}/canciones/${cancion.id}/audio`
+        : cancion.audioUrl || AUDIO_SAMPLES[(cancion.id || 1) % AUDIO_SAMPLES.length];
     const portada = obtenerPortadaCancionResuelta(cancion);
 
     setCancionActual({

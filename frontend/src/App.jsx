@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import PerfilArtista from "./components/PerfilArtista";
 import GestionCanciones from "./components/GestionCanciones";
 import Social from "./components/Social";
+import CompartirCancionModal from "./components/CompartirCancionModal";
 import PerfilPublico from "./components/PerfilPublico";
 import RecortarImagenModal from "./components/RecortarImagenModal";
 import { CONFIG_RECORTE } from "./utils/configRecorte";
@@ -244,6 +245,7 @@ function App() {
   const [errorPerfilPublico, setErrorPerfilPublico] = useState("");
   const [vistaAnteriorPerfil, setVistaAnteriorPerfil] = useState("inicio");
   const [chatInicialId, setChatInicialId] = useState(null);
+  const [cancionParaCompartir, setCancionParaCompartir] = useState(null);
   const [perfilPrivado, setPerfilPrivado] = useState(false);
   const [mostrarConfiguracion, setMostrarConfiguracion] = useState(true);
   const [tabPerfilConfiguracion, setTabPerfilConfiguracion] = useState("general");
@@ -1178,6 +1180,12 @@ function App() {
   const abrirChatConUsuario = (idUsuario) => {
     setChatInicialId(idUsuario);
     cambiarVista("social");
+  };
+
+  const abrirCompartirCancion = (cancion) => {
+    if (cancion?.id) {
+      setCancionParaCompartir(cancion);
+    }
   };
 
   const verPerfilAmigo = (idUsuario) => abrirPerfilPublico({ tipo: "usuario", id: idUsuario });
@@ -2668,6 +2676,17 @@ function App() {
                                     className="playlist-dropdown-item"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      abrirCompartirCancion(song);
+                                      setMenuAccionesCancionId(null);
+                                    }}
+                                  >
+                                    Compartir
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="playlist-dropdown-item"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       eliminarDePlaylist(song.id);
                                     }}
                                   >
@@ -2803,9 +2822,21 @@ function App() {
                         >
                           {esCancionFavorita(song) ? "♥" : "♡"}
                         </button>
-                        <button 
-                          type="button" 
-                          className="delete-button" 
+                        <button
+                          type="button"
+                          className="secondary-link-button table-action-button"
+                          aria-label="Compartir canción"
+                          title="Compartir"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirCompartirCancion(song);
+                          }}
+                        >
+                          ↗
+                        </button>
+                        <button
+                          type="button"
+                          className="delete-button"
                           onClick={(e) => {
                             e.stopPropagation();
                             eliminarDePlaylist(song.id);
@@ -2869,6 +2900,13 @@ function App() {
                 onClick={() => alternarFavoritoCancion(cancionVistaPrevia)}
               >
                 {esCancionFavorita(cancionVistaPrevia) ? "♥ Favorita" : "♡ Favorita"}
+              </button>
+              <button
+                type="button"
+                className="secondary-link-button favorite-inline-button"
+                onClick={() => abrirCompartirCancion(cancionVistaPrevia)}
+              >
+                ↗ Compartir
               </button>
             </div>
             <input
@@ -2999,6 +3037,7 @@ function App() {
             onSesionExpirada={cerrarSesionPorExpiracion}
             conversacionInicialId={chatInicialId}
             onConversacionInicialConsumida={() => setChatInicialId(null)}
+            onReproducirCancion={reproducirCancionDirecta}
           />
         ) : vistaActiva === "mi-musica" ? (
           <GestionCanciones usuario={usuario} />
@@ -3648,6 +3687,15 @@ function App() {
                 >
                   {esCancionFavorita(cancionActual) ? "♥" : "♡"}
                 </button>
+                <button
+                  type="button"
+                  className="mini-icon-button"
+                  onClick={() => abrirCompartirCancion(cancionActual)}
+                  aria-label="Compartir canción"
+                  title="Compartir"
+                >
+                  ↗
+                </button>
                 <span className="mini-separator" aria-hidden="true">|</span>
 
                 <label className="mini-player-volume" htmlFor="mini-player-volume">
@@ -3679,6 +3727,13 @@ function App() {
           </>
         )}
         <audio ref={audioRef} src={cancionActual.audioUrl} preload="metadata" />
+
+        {cancionParaCompartir && (
+          <CompartirCancionModal
+            cancion={cancionParaCompartir}
+            onCerrar={() => setCancionParaCompartir(null)}
+          />
+        )}
       </section>
     </main>
   );

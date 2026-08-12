@@ -43,7 +43,13 @@ async function leerJsonSeguro(respuesta) {
   }
 }
 
-function Social({ usuario, onSesionExpirada, conversacionInicialId = null, onConversacionInicialConsumida }) {
+function Social({
+  usuario,
+  onSesionExpirada,
+  conversacionInicialId = null,
+  onConversacionInicialConsumida,
+  onReproducirCancion,
+}) {
   const [conversaciones, setConversaciones] = useState([]);
   const [cargandoConversaciones, setCargandoConversaciones] = useState(true);
   const [errorConversaciones, setErrorConversaciones] = useState("");
@@ -383,19 +389,44 @@ function Social({ usuario, onSesionExpirada, conversacionInicialId = null, onCon
                   ) : mensajes.length === 0 ? (
                     <p className="social-panel-hint">Todavía no hay mensajes. ¡Saluda!</p>
                   ) : (
-                    mensajes.map((mensaje) => (
-                      <div
-                        key={mensaje.id}
-                        className={`social-message-bubble ${
-                          mensaje.propio
-                            ? "social-message-bubble--mine"
-                            : "social-message-bubble--theirs"
-                        }`}
-                      >
-                        {mensaje.contenido}
-                      </div>
-                    ))
-                  )}
+                    mensajes.map((mensaje) =>
+                      mensaje.tipo === "cancion" && mensaje.cancion ? (
+                        <button
+                          key={mensaje.id}
+                          type="button"
+                          className={`social-message-bubble social-message-bubble--song ${
+                            mensaje.propio
+                              ? "social-message-bubble--mine"
+                              : "social-message-bubble--theirs"
+                          }`}
+                          onClick={() => onReproducirCancion?.(mensaje.cancion)}
+                        >
+                          <span
+                            className="social-song-cover"
+                            style={
+                              mensaje.cancion.portada
+                                ? { backgroundImage: `url("${mensaje.cancion.portada}")` }
+                                : undefined
+                            }
+                          />
+                          <span className="social-song-info">
+                            <strong>{mensaje.cancion.titulo}</strong>
+                            <span>{mensaje.cancion.artista}</span>
+                          </span>
+                        </button>
+                      ) : (
+                        <div
+                          key={mensaje.id}
+                          className={`social-message-bubble ${
+                            mensaje.propio
+                              ? "social-message-bubble--mine"
+                              : "social-message-bubble--theirs"
+                          }`}
+                        >
+                          {mensaje.contenido}
+                        </div>
+                      )
+                    ))}
                 </div>
 
                 <div className="social-input-bar">

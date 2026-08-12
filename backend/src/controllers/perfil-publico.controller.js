@@ -236,7 +236,10 @@ exports.obtenerPerfilPublicoArtista = async (req, res) => {
       `SELECT
          a.id_artista, a.id_usuario, a.nombre, a.biografia, a.foto_url, a.portada_url,
          a.generos, a.fecha_debut, a.creado_en,
-         u.correo, u.creado_en AS usuario_creado_en
+         u.correo, u.creado_en AS usuario_creado_en,
+         u.foto_perfil AS usuario_foto_perfil,
+         u.portada_url AS usuario_portada_url,
+         u.biografia AS usuario_biografia
        FROM artistas a
        LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
        WHERE a.estado = TRUE
@@ -314,9 +317,9 @@ exports.obtenerPerfilPublicoArtista = async (req, res) => {
         idArtista: artista.id_artista,
         nombre: artista.nombre,
         correo: artista.correo || null,
-        fotoUrl: urlAbsoluta(artista.foto_url),
-        portadaUrl: urlAbsoluta(artista.portada_url),
-        biografia: artista.biografia || "",
+        fotoUrl: urlAbsoluta(artista.usuario_foto_perfil || artista.foto_url),
+        portadaUrl: urlAbsoluta(artista.usuario_portada_url || artista.portada_url),
+        biografia: artista.usuario_biografia || artista.biografia || "",
         fechaDebut: formatearFecha(artista.fecha_debut),
         fechaUnion: artista.usuario_creado_en || artista.creado_en,
         esPropio,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import Login from "./components/Login";
+import IstreamLogo from "./components/IstreamLogo";
 import PerfilArtista from "./components/PerfilArtista";
 import GestionCanciones from "./components/GestionCanciones";
 import Social from "./components/Social";
@@ -26,6 +27,74 @@ const FOTO_ARTISTA_BLANCA =
   );
 
 const PLAYER_PLAYLIST_MENU_ID = "player-current-song";
+
+const ICONO_SVG_PROPS = {
+  width: 18,
+  height: 18,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  className: "sidebar-link-icon",
+  "aria-hidden": "true",
+};
+
+function IconoInicio() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9" />
+    </svg>
+  );
+}
+
+function IconoSocial() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 4v-4H6a2 2 0 0 1-2-2V6Z" />
+    </svg>
+  );
+}
+
+function IconoArtistas() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" />
+      <path d="M6 11v1a6 6 0 0 0 12 0v-1" />
+      <path d="M12 19v3" />
+      <path d="M9 22h6" />
+    </svg>
+  );
+}
+
+function IconoBiblioteca() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
+}
+
+function IconoPerfil() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5 20c1.5-4 4-5.5 7-5.5s5.5 1.5 7 5.5" />
+    </svg>
+  );
+}
+
+function IconoMiMusica() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M12 16V4" />
+      <path d="M7 9l5-5 5 5" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
 
 function obtenerUsuarioGuardado() {
   const token =
@@ -2209,7 +2278,9 @@ function App() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand-block">
-          <span className="brand-icon">♫</span>
+          <span className="brand-icon">
+            <IstreamLogo />
+          </span>
           <span>iStream</span>
         </div>
 
@@ -2219,6 +2290,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "inicio" ? "active" : ""}`}
             onClick={() => cambiarVista("inicio")}
           >
+            <IconoInicio />
             Inicio
           </button>
           <button
@@ -2226,6 +2298,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "social" ? "active" : ""}`}
             onClick={() => cambiarVista("social")}
           >
+            <IconoSocial />
             Social
           </button>
           <button
@@ -2233,6 +2306,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "artistas" ? "active" : ""}`}
             onClick={() => cambiarVista("artistas")}
           >
+            <IconoArtistas />
             Artistas
           </button>
           <button
@@ -2240,6 +2314,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "biblioteca" ? "active" : ""}`}
             onClick={() => cambiarVista("biblioteca")}
           >
+            <IconoBiblioteca />
             Tu biblioteca
           </button>
           <button
@@ -2247,6 +2322,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "perfil" ? "active" : ""}`}
             onClick={() => cambiarVista("perfil")}
           >
+            <IconoPerfil />
             Perfil
           </button>
           {usuario.rol === "artista" && (
@@ -2255,6 +2331,7 @@ function App() {
               className={`sidebar-link ${vistaActiva === "mi-musica" ? "active" : ""}`}
               onClick={() => cambiarVista("mi-musica")}
             >
+              <IconoMiMusica />
               Mi música
             </button>
           )}

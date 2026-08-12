@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./Login.css";
+import IstreamLogo from "./IstreamLogo";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -306,7 +307,9 @@ function Login({ onLogin }) {
     <main className="login-page">
       <section className="login-decoration">
         <div className="brand">
-          <span className="brand-icon">♫</span>
+          <span className="brand-icon">
+            <IstreamLogo />
+          </span>
           <span>iStream</span>
         </div>
 
@@ -328,7 +331,10 @@ function Login({ onLogin }) {
       <section className="login-container">
         <form className="login-card" onSubmit={enviarFormulario}>
           <div className="mobile-brand">
-            <span>♫</span> iStream
+            <span>
+              <IstreamLogo />
+            </span>{" "}
+            iStream
           </div>
 
           <h2>{configModo.titulo}</h2>

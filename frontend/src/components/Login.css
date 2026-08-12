@@ -58,7 +58,7 @@
   place-items: center;
   width: 42px;
   height: 42px;
-  border-radius: 13px;
+  border-radius: 10px;
   background: var(--brand-gradient);
   color: #ffffff;
 }

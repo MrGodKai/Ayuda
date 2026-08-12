@@ -27,7 +27,7 @@
   place-items: center;
   width: 42px;
   height: 42px;
-  border-radius: 13px;
+  border-radius: 10px;
   background: var(--accent);
 }
 
@@ -51,6 +51,9 @@
 
 .sidebar-link,
 .logout-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 13px 16px;
   border: 1px solid transparent;
   border-radius: 14px;
@@ -60,6 +63,15 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
+}
+
+.sidebar-link-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.sidebar-link.active .sidebar-link-icon {
+  opacity: 1;
 }
 
 .sidebar-link:hover,
@@ -2203,30 +2215,34 @@
   text-align: left;
 }
 
-.tile-cover--image {
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+.tile-cover.tile-cover--image {
+  background-position: center !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
 }
 
 .tile-cover--image::before {
   content: "";
 }
 
-.cover-with-image {
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+.playlist-cover.cover-with-image,
+.player-cover.cover-with-image,
+.mini-cover.cover-with-image,
+.mini-player-cover.cover-with-image,
+.tile-cover.cover-with-image {
+  background-position: center !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
 }
 
 .cover-with-image::before {
   content: "";
 }
 
-.artist-circle--image {
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+.artist-circle.artist-circle--image {
+  background-position: center !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
 }
 
 .artist-circle--image::before {
@@ -2326,7 +2342,7 @@
 .brand-icon {
   background: var(--brand-gradient);
   color: #041109;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .topbar {

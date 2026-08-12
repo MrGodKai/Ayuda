@@ -245,7 +245,10 @@ function App() {
   const [vistaAnteriorPerfil, setVistaAnteriorPerfil] = useState("inicio");
   const [chatInicialId, setChatInicialId] = useState(null);
   const [perfilPrivado, setPerfilPrivado] = useState(false);
-  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
+  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(true);
+  const [tabPerfilConfiguracion, setTabPerfilConfiguracion] = useState("general");
+  const [nombreArtisticoPropio, setNombreArtisticoPropio] = useState("");
+  const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const [tema, setTema] = useState(
     () => localStorage.getItem("istream:tema") || "claro"
   );
@@ -261,6 +264,7 @@ function App() {
   const portadaPerfilUsuario = resolverUrlImagen(usuario?.portadaUrl || null);
   const searchAreaRef = useRef(null);
   const audioRef = useRef(null);
+  const menuUsuarioRef = useRef(null);
   const historialAleatorioRef = useRef([]);
   const claveRecientesBusqueda = useMemo(
     () => (usuario?.id ? `istream:recientes:usuario:${usuario.id}` : null),
@@ -1448,6 +1452,22 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!menuUsuarioAbierto) {
+      return undefined;
+    }
+
+    const cerrarMenuUsuarioPorFuera = (event) => {
+      if (menuUsuarioRef.current && !menuUsuarioRef.current.contains(event.target)) {
+        setMenuUsuarioAbierto(false);
+      }
+    };
+
+    document.addEventListener("mousedown", cerrarMenuUsuarioPorFuera);
+
+    return () => document.removeEventListener("mousedown", cerrarMenuUsuarioPorFuera);
+  }, [menuUsuarioAbierto]);
+
   const cargarPerfil = async () => {
     const token = sessionStorage.getItem("token");
 
@@ -2224,15 +2244,6 @@ function App() {
           {usuario.rol === "artista" && (
             <button
               type="button"
-              className={`sidebar-link ${vistaActiva === "perfil-artista" ? "active" : ""}`}
-              onClick={() => cambiarVista("perfil-artista")}
-            >
-              Mi perfil de artista
-            </button>
-          )}
-          {usuario.rol === "artista" && (
-            <button
-              type="button"
               className={`sidebar-link ${vistaActiva === "mi-musica" ? "active" : ""}`}
               onClick={() => cambiarVista("mi-musica")}
             >
@@ -2240,6 +2251,34 @@ function App() {
             </button>
           )}
         </nav>
+
+        <div className="sidebar-user" ref={menuUsuarioRef}>
+          <div className={`sidebar-user-avatar ${fotoPerfilUsuario ? "sidebar-user-avatar--photo" : ""}`}>
+            {fotoPerfilUsuario ? (
+              <img src={fotoPerfilUsuario} alt={usuario.nombre} />
+            ) : (
+              <span>{usuario.nombre?.charAt(0).toUpperCase() || "U"}</span>
+            )}
+          </div>
+          <span className="sidebar-user-name">{usuario.nombre}</span>
+          <button
+            type="button"
+            className="sidebar-user-menu-btn"
+            onClick={() => setMenuUsuarioAbierto((valor) => !valor)}
+            aria-label="Más opciones de la cuenta"
+          >
+            ⋯
+          </button>
+          {menuUsuarioAbierto && (
+            <ul className="sidebar-user-menu">
+              <li>
+                <button type="button" onClick={cerrarSesion}>
+                  Cerrar sesión
+                </button>
+              </li>
+            </ul>
+          )}
+        </div>
       </aside>
 
       <section
@@ -2961,8 +3000,6 @@ function App() {
             conversacionInicialId={chatInicialId}
             onConversacionInicialConsumida={() => setChatInicialId(null)}
           />
-        ) : vistaActiva === "perfil-artista" ? (
-          <PerfilArtista usuario={usuario} onVerPerfilPublico={abrirPerfilArtista} />
         ) : vistaActiva === "mi-musica" ? (
           <GestionCanciones usuario={usuario} />
         ) : vistaActiva === "perfil" ? (
@@ -3029,16 +3066,19 @@ function App() {
                   <p className="section-label">PERFIL</p>
                   <h2>{usuario.nombre}</h2>
                   <p>{usuario.correo}</p>
-                  {usuario.biografia && <p>{usuario.biografia}</p>}
                   <button
                     type="button"
                     className="secondary-link-button"
-                    onClick={() => abrirPerfilPublico({ tipo: "usuario", id: usuario.id })}
+                    onClick={() =>
+                      tabPerfilConfiguracion === "artista" && usuario.rol === "artista" && nombreArtisticoPropio
+                        ? abrirPerfilPublico({ tipo: "artista", nombre: nombreArtisticoPropio })
+                        : abrirPerfilPublico({ tipo: "usuario", id: usuario.id })
+                    }
                   >
                     Ver mi perfil público
                   </button>
                   <div className="profile-meta-line">
-                    <span>{usuario.rol || "Usuario"}</span>
+                    <span>{usuario.rol ? usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1) : "Usuario"}</span>
                     <span>{resumenPerfil.reproduccionesUltimos7Dias} reproducciones en los ultimos 7 dias</span>
                   </div>
                   <div className="profile-follow-counts">
@@ -3255,9 +3295,31 @@ function App() {
               <div className="profile-side-column">
                 {mostrarConfiguracion && (
                 <>
+                {usuario.rol === "artista" && (
+                  <div className="profile-config-tabs">
+                    <button
+                      type="button"
+                      className={`sp-tab-pill${tabPerfilConfiguracion === "general" ? " sp-tab-pill--active" : ""}`}
+                      onClick={() => setTabPerfilConfiguracion("general")}
+                    >
+                      General
+                    </button>
+                    <button
+                      type="button"
+                      className={`sp-tab-pill${tabPerfilConfiguracion === "artista" ? " sp-tab-pill--active" : ""}`}
+                      onClick={() => setTabPerfilConfiguracion("artista")}
+                    >
+                      Cuenta de artista
+                    </button>
+                  </div>
+                )}
+
+                {tabPerfilConfiguracion === "artista" && usuario.rol === "artista" ? (
+                  <PerfilArtista usuario={usuario} onDatosCargados={setNombreArtisticoPropio} />
+                ) : (
                 <form className="profile-card profile-form" onSubmit={guardarPerfil}>
                   <div className="form-header">
-                    <h3>Editar perfil</h3>
+                    <h3>General</h3>
                     <p>Actualiza tus datos públicos.</p>
                   </div>
 
@@ -3334,6 +3396,7 @@ function App() {
                     </button>
                   </div>
                 </form>
+                )}
 
                 <button
                   type="button"

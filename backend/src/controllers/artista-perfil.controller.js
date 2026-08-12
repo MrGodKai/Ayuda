@@ -107,9 +107,8 @@ async function obtenerOcrearPerfil(idUsuario, nombreUsuario) {
   return filasNuevas[0];
 }
 
-function validarPerfilArtista({ nombreArtistico, biografia, generos, fechaDebut }) {
+function validarPerfilArtista({ nombreArtistico, generos, fechaDebut }) {
   const nombreLimpio = String(nombreArtistico || "").trim();
-  const biografiaLimpia = String(biografia || "").trim();
   const fechaDebutLimpia = String(fechaDebut || "").trim();
 
   if (!nombreLimpio) {
@@ -122,14 +121,6 @@ function validarPerfilArtista({ nombreArtistico, biografia, generos, fechaDebut 
 
   if (nombreLimpio.length > 150) {
     return "El nombre artístico no puede superar 150 caracteres.";
-  }
-
-  if (!biografiaLimpia) {
-    return "La biografía es obligatoria.";
-  }
-
-  if (biografiaLimpia.length > 500) {
-    return "La biografía no puede superar 500 caracteres.";
   }
 
   if (!Array.isArray(generos) || generos.length === 0) {
@@ -209,11 +200,10 @@ exports.actualizarMiPerfilArtista = async (req, res) => {
       });
     }
 
-    const { nombreArtistico, biografia, generos, fechaDebut } = req.body;
+    const { nombreArtistico, generos, fechaDebut } = req.body;
 
     const errorValidacion = validarPerfilArtista({
       nombreArtistico,
-      biografia,
       generos,
       fechaDebut,
     });
@@ -230,7 +220,6 @@ exports.actualizarMiPerfilArtista = async (req, res) => {
     );
 
     const nombreLimpio = String(nombreArtistico).trim();
-    const biografiaLimpia = String(biografia).trim();
     const generosTexto = [...new Set(generos)].join(", ");
     const fechaDebutLimpia = String(fechaDebut || "").trim() || null;
 
@@ -254,13 +243,11 @@ exports.actualizarMiPerfilArtista = async (req, res) => {
       `UPDATE artistas
        SET
          nombre = ?,
-         biografia = ?,
          generos = ?,
          fecha_debut = ?
        WHERE id_artista = ?`,
       [
         nombreLimpio,
-        biografiaLimpia,
         generosTexto,
         fechaDebutLimpia,
         perfilActual.id_artista,

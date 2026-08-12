@@ -8,6 +8,7 @@ const {
   obtenerConversaciones,
   obtenerMensajesConContacto,
   enviarMensaje,
+  compartirCancion,
 } = require(
   "../controllers/mensajes.controller"
 );
@@ -19,5 +20,6 @@ router.use(verificarToken);
 router.get("/conversaciones", obtenerConversaciones);
 router.get("/:idContacto", obtenerMensajesConContacto);
 router.post("/:idContacto", enviarMensaje);
+router.post("/:idContacto/cancion", compartirCancion);
 
 module.exports = router;

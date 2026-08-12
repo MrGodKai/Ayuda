@@ -160,11 +160,17 @@ exports.obtenerMensajesConContacto = async (req, res) => {
     }
 
     const [mensajes] = await pool.execute(
-      `SELECT id_mensaje, id_usuario_emisor, id_usuario_receptor, contenido, creado_en
-       FROM mensajes
-       WHERE (id_usuario_emisor = ? AND id_usuario_receptor = ?)
-          OR (id_usuario_emisor = ? AND id_usuario_receptor = ?)
-       ORDER BY creado_en ASC, id_mensaje ASC
+      `SELECT
+         m.id_mensaje, m.id_usuario_emisor, m.id_usuario_receptor,
+         m.contenido, m.tipo, m.creado_en,
+         c.id_cancion, c.titulo AS cancion_titulo, c.artista AS cancion_artista,
+         c.album AS cancion_album, c.portada_url AS cancion_portada,
+         c.audio_url AS cancion_audio_url
+       FROM mensajes m
+       LEFT JOIN canciones c ON c.id_cancion = m.id_cancion
+       WHERE (m.id_usuario_emisor = ? AND m.id_usuario_receptor = ?)
+          OR (m.id_usuario_emisor = ? AND m.id_usuario_receptor = ?)
+       ORDER BY m.creado_en ASC, m.id_mensaje ASC
        LIMIT ${LIMITE_MENSAJES_HISTORIAL}`,
       [idUsuarioActual, idContacto, idContacto, idUsuarioActual]
     );
@@ -191,8 +197,20 @@ exports.obtenerMensajesConContacto = async (req, res) => {
         idEmisor: m.id_usuario_emisor,
         idReceptor: m.id_usuario_receptor,
         contenido: m.contenido,
+        tipo: m.tipo,
         creadoEn: m.creado_en,
         propio: m.id_usuario_emisor === idUsuarioActual,
+        cancion:
+          m.tipo === "cancion" && m.id_cancion
+            ? {
+                id: m.id_cancion,
+                titulo: m.cancion_titulo,
+                artista: m.cancion_artista,
+                album: m.cancion_album,
+                portada: m.cancion_portada,
+                audioUrl: m.cancion_audio_url,
+              }
+            : null,
       })),
     });
   } catch (error) {
@@ -273,8 +291,10 @@ exports.enviarMensaje = async (req, res) => {
         idEmisor: mensajeCreado.id_usuario_emisor,
         idReceptor: mensajeCreado.id_usuario_receptor,
         contenido: mensajeCreado.contenido,
+        tipo: "texto",
         creadoEn: mensajeCreado.creado_en,
         propio: true,
+        cancion: null,
       },
     });
   } catch (error) {
@@ -282,6 +302,104 @@ exports.enviarMensaje = async (req, res) => {
 
     return res.status(500).json({
       mensaje: "No se pudo enviar el mensaje.",
+    });
+  }
+};
+
+exports.compartirCancion = async (req, res) => {
+  try {
+    const idUsuarioActual = req.usuario.id;
+    const idContacto = Number(req.params.idContacto);
+    const idCancion = Number(req.body.idCancion);
+
+    if (!Number.isInteger(idContacto) || idContacto <= 0) {
+      return res.status(400).json({
+        mensaje: "El identificador del contacto no es válido.",
+      });
+    }
+
+    if (idContacto === idUsuarioActual) {
+      return res.status(400).json({
+        mensaje: "No puedes enviarte canciones a ti mismo.",
+      });
+    }
+
+    if (!Number.isInteger(idCancion) || idCancion <= 0) {
+      return res.status(400).json({
+        mensaje: "Debe indicar una canción válida para compartir.",
+      });
+    }
+
+    const contacto = await obtenerUsuarioActivo(idContacto);
+
+    if (!contacto) {
+      return res.status(404).json({
+        mensaje: "El usuario no existe o está inactivo.",
+      });
+    }
+
+    const esMutuo = await verificarMutuo(idUsuarioActual, idContacto);
+
+    if (!esMutuo) {
+      return res.status(403).json({
+        mensaje: "Ya no tienes una conversación activa con este usuario.",
+      });
+    }
+
+    const [canciones] = await pool.execute(
+      `SELECT id_cancion, titulo, artista, album, portada_url, audio_url
+       FROM canciones
+       WHERE id_cancion = ?
+         AND estado = TRUE
+       LIMIT 1`,
+      [idCancion]
+    );
+
+    if (canciones.length === 0) {
+      return res.status(404).json({
+        mensaje: "La canción que intentas compartir no existe.",
+      });
+    }
+
+    const cancion = canciones[0];
+    const contenido = `🎵 ${cancion.titulo}`.slice(0, LIMITE_CARACTERES_MENSAJE);
+
+    const [resultado] = await pool.execute(
+      `INSERT INTO mensajes
+       (id_usuario_emisor, id_usuario_receptor, contenido, tipo, id_cancion)
+       VALUES (?, ?, ?, 'cancion', ?)`,
+      [idUsuarioActual, idContacto, contenido, cancion.id_cancion]
+    );
+
+    const [filas] = await pool.execute(
+      `SELECT creado_en FROM mensajes WHERE id_mensaje = ? LIMIT 1`,
+      [resultado.insertId]
+    );
+
+    return res.status(201).json({
+      mensaje: {
+        id: resultado.insertId,
+        idEmisor: idUsuarioActual,
+        idReceptor: idContacto,
+        contenido,
+        tipo: "cancion",
+        creadoEn: filas[0]?.creado_en,
+        propio: true,
+        cancion: {
+          id: cancion.id_cancion,
+          titulo: cancion.titulo,
+          artista: cancion.artista,
+          album: cancion.album,
+          portada: cancion.portada_url,
+          audioUrl: cancion.audio_url,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error al compartir canción:", error);
+
+    return res.status(500).json({
+      mensaje: "No se pudo compartir la canción.",
     });
   }
 };

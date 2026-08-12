@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS canciones_favoritas;
 DROP TABLE IF EXISTS historial_reproducciones;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS relaciones_amistad;
+DROP TABLE IF EXISTS mensajes;
 DROP TABLE IF EXISTS seguidores_usuarios;
 DROP TABLE IF EXISTS canciones;
 DROP TABLE IF EXISTS artistas;
@@ -224,6 +225,38 @@ CREATE TABLE seguidores_usuarios (
         FOREIGN KEY (id_usuario_seguido)
         REFERENCES usuarios(id_usuario)
         ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE mensajes (
+    id_mensaje BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario_emisor INT NOT NULL,
+    id_usuario_receptor INT NOT NULL,
+    contenido VARCHAR(2000) NOT NULL,
+    tipo ENUM('texto', 'cancion') NOT NULL DEFAULT 'texto',
+    id_cancion INT NULL,
+    leido_en TIMESTAMP NULL DEFAULT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_mensajes_emisor_receptor_fecha (id_usuario_emisor, id_usuario_receptor, creado_en),
+    INDEX idx_mensajes_receptor_emisor_fecha (id_usuario_receptor, id_usuario_emisor, creado_en),
+
+    CONSTRAINT fk_mensajes_emisor
+        FOREIGN KEY (id_usuario_emisor)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_mensajes_receptor
+        FOREIGN KEY (id_usuario_receptor)
+        REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_mensajes_cancion
+        FOREIGN KEY (id_cancion)
+        REFERENCES canciones(id_cancion)
+        ON DELETE SET NULL
         ON UPDATE CASCADE
 );
 

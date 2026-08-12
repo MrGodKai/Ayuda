@@ -519,6 +519,32 @@ async function iniciarServidor() {
       console.warn("Advertencia en migración fecha_debut:", migErr.message);
     }
 
+    try {
+      const conn6 = await pool.getConnection();
+      const [colsCancionCompartida] = await conn6.execute(
+        `SELECT COUNT(*) AS cnt
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = 'mensajes'
+           AND COLUMN_NAME  = 'tipo'`
+      );
+      if (colsCancionCompartida[0].cnt === 0) {
+        await conn6.execute(
+          `ALTER TABLE mensajes
+           ADD COLUMN tipo ENUM('texto', 'cancion') NOT NULL DEFAULT 'texto',
+           ADD COLUMN id_cancion INT NULL,
+           ADD CONSTRAINT fk_mensajes_cancion
+             FOREIGN KEY (id_cancion)
+             REFERENCES canciones(id_cancion)
+             ON DELETE SET NULL
+             ON UPDATE CASCADE`
+        );
+      }
+      conn6.release();
+    } catch (migErr) {
+      console.warn("Advertencia en migración tipo/id_cancion de mensajes:", migErr.message);
+    }
+
     app.listen(PORT, () => {
       console.log(
         `Servidor funcionando en http://localhost:${PORT}`

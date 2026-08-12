@@ -204,7 +204,14 @@ function App() {
   const [progreso, setProgreso] = useState(0);
   const [duracion, setDuracion] = useState(0);
   const [volumen, setVolumen] = useState(70);
-  const [indiceCancionActual, setIndiceCancionActual] = useState(0);
+  const [colaReproduccion, setColaReproduccion] = useState([]);
+  const [indiceColaReproduccion, setIndiceColaReproduccion] = useState(0);
+  const [cancionVistaPrevia, setCancionVistaPrevia] = useState(cancionActual);
+  const [colaVistaPrevia, setColaVistaPrevia] = useState([]);
+  const [indiceVistaPrevia, setIndiceVistaPrevia] = useState(0);
+  const [modoRepeticion, setModoRepeticion] = useState("ninguno");
+  const [reproduccionAleatoria, setReproduccionAleatoria] = useState(false);
+  const [cargandoAudio, setCargandoAudio] = useState(false);
   const [playlistsUsuario, setPlaylistsUsuario] = useState([]);
   const [playlistSeleccionadaId, setPlaylistSeleccionadaId] = useState(null);
   const [menuPlaylistAbierto, setMenuPlaylistAbierto] = useState(false);
@@ -254,6 +261,7 @@ function App() {
   const portadaPerfilUsuario = resolverUrlImagen(usuario?.portadaUrl || null);
   const searchAreaRef = useRef(null);
   const audioRef = useRef(null);
+  const historialAleatorioRef = useRef([]);
   const claveRecientesBusqueda = useMemo(
     () => (usuario?.id ? `istream:recientes:usuario:${usuario.id}` : null),
     [usuario?.id]
@@ -280,6 +288,10 @@ function App() {
   );
 
   const miPlaylist = playlistActiva?.canciones || [];
+
+  const estaPrevisualizando = Boolean(
+    cancionVistaPrevia && cancionVistaPrevia.id !== cancionActual.id
+  );
 
   const fallbackPortadasCancion = useMemo(() => {
     const portadaPorArtista = new Map();
@@ -1650,6 +1662,9 @@ function App() {
   };
 
   const abrirPlayer = () => {
+    setCancionVistaPrevia(cancionActual);
+    setColaVistaPrevia(colaReproduccion);
+    setIndiceVistaPrevia(indiceColaReproduccion);
     setMiniPlayerVisible(false);
     setVistaActiva("player");
   };
@@ -1719,7 +1734,7 @@ function App() {
 
     const primeraCancion = resultadosBusqueda.canciones[0];
     if (primeraCancion) {
-      seleccionarCancion(primeraCancion);
+      verCancion(resultadosBusqueda.canciones, 0);
       return;
     }
 
@@ -1738,29 +1753,50 @@ function App() {
     setBusquedaAbierta(false);
   };
 
-  const seleccionarCancion = (cancion) => {
-    registrarCancionReciente(cancion);
+  const normalizarCancion = (cancion) => {
     const audioUrl =
       cancion.id && cancion.audioUrl
         ? `${API_URL}/canciones/${cancion.id}/audio`
         : cancion.audioUrl || AUDIO_SAMPLES[(cancion.id || 1) % AUDIO_SAMPLES.length];
-    const portada = obtenerPortadaCancionResuelta(cancion);
 
-    setCancionActual({
+    return {
       id: cancion.id || Math.random(),
       titulo: cancion.titulo || "Canción desconocida",
       artista: cancion.artista || "Artista desconocido",
       album: cancion.album || "Álbum desconocido",
-      audioUrl: audioUrl,
+      audioUrl,
       duracion: cancion.duracion || 0,
-      portada,
-    });
+      portada: obtenerPortadaCancionResuelta(cancion),
+    };
+  };
+
+  const seleccionarCancion = (cancion) => {
+    registrarCancionReciente(cancion);
+    const normalizada = normalizarCancion(cancion);
+
+    setCancionActual(normalizada);
+    setCancionVistaPrevia(normalizada);
     setMensajeReproductor("");
     setReproduciendo(false);
     setProgreso(0);
     setBusqueda("");
     setBusquedaAbierta(false);
-    abrirPlayer();
+    setMiniPlayerVisible(false);
+    setVistaActiva("player");
+  };
+
+  const verCancion = (lista, indice) => {
+    const cancion = lista?.[indice];
+    if (!cancion) {
+      return;
+    }
+
+    registrarCancionReciente(cancion);
+    setCancionVistaPrevia(normalizarCancion(cancion));
+    setColaVistaPrevia(lista);
+    setIndiceVistaPrevia(indice);
+    setMiniPlayerVisible(false);
+    setVistaActiva("player");
   };
 
   const abrirPerfilArtista = (artistaNombre) => {
@@ -1786,20 +1822,46 @@ function App() {
     };
 
     const manejarError = () => {
+      setCargandoAudio(false);
       setReproduciendo(false);
       mostrarMensajeReproductor("No se pudo reproducir la canción seleccionada.", "error");
     };
 
+    const manejarFin = () => {
+      if (modoRepeticion === "una") {
+        audio.currentTime = 0;
+        audio.play();
+        return;
+      }
+      cancionSiguiente({ auto: true });
+    };
+
+    const manejarEspera = () => setCargandoAudio(true);
+    const manejarListo = () => setCargandoAudio(false);
+
     audio.addEventListener("timeupdate", manejarTiempo);
     audio.addEventListener("loadedmetadata", manejarCarga);
     audio.addEventListener("error", manejarError);
+    audio.addEventListener("ended", manejarFin);
+    audio.addEventListener("waiting", manejarEspera);
+    audio.addEventListener("canplay", manejarListo);
 
     return () => {
       audio.removeEventListener("timeupdate", manejarTiempo);
       audio.removeEventListener("loadedmetadata", manejarCarga);
       audio.removeEventListener("error", manejarError);
+      audio.removeEventListener("ended", manejarFin);
+      audio.removeEventListener("waiting", manejarEspera);
+      audio.removeEventListener("canplay", manejarListo);
     };
-  }, [cancionActual.audioUrl, volumen]);
+  }, [
+    cancionActual.audioUrl,
+    volumen,
+    modoRepeticion,
+    reproduccionAleatoria,
+    colaReproduccion,
+    indiceColaReproduccion,
+  ]);
 
   const alternarReproduccion = async () => {
     const audio = audioRef.current;
@@ -1887,7 +1949,7 @@ function App() {
     }
 
     if (playlistsUsuario.length === 1) {
-      agregarAPlaylist(cancionActual, playlistsUsuario[0].id);
+      agregarAPlaylist(cancionVistaPrevia, playlistsUsuario[0].id);
       return;
     }
 
@@ -1962,32 +2024,89 @@ function App() {
     );
   };
 
-  const reproducirDesdePlaylist = (index) => {
-    if (miPlaylist[index]) {
-      setIndiceCancionActual(index);
-      seleccionarCancion(miPlaylist[index]);
-      setReproduciendo(false);
-      setBusqueda("");
-      setBusquedaAbierta(false);
+  const reproducirDesdeCola = (lista, indice, { autoplay = true } = {}) => {
+    if (!lista?.[indice]) {
+      return;
+    }
+
+    setColaReproduccion(lista);
+    setIndiceColaReproduccion(indice);
+    historialAleatorioRef.current = [];
+    setColaVistaPrevia(lista);
+    setIndiceVistaPrevia(indice);
+
+    if (autoplay) {
+      reproducirCancionDirecta(lista[indice]);
+    } else {
+      seleccionarCancion(lista[indice]);
+    }
+  };
+
+  const confirmarReproduccionVistaPrevia = () => {
+    reproducirDesdeCola(colaVistaPrevia, indiceVistaPrevia);
+  };
+
+  const verCancionSiguiente = () => {
+    if (indiceVistaPrevia < colaVistaPrevia.length - 1) {
+      verCancion(colaVistaPrevia, indiceVistaPrevia + 1);
+    }
+  };
+
+  const verCancionAnterior = () => {
+    if (indiceVistaPrevia > 0) {
+      verCancion(colaVistaPrevia, indiceVistaPrevia - 1);
     }
   };
 
   const cancionAnterior = () => {
-    if (indiceCancionActual > 0) {
-      const nuevoIndice = indiceCancionActual - 1;
-      setIndiceCancionActual(nuevoIndice);
-      seleccionarCancion(miPlaylist[nuevoIndice]);
-      setReproduciendo(true);
+    if (colaReproduccion.length === 0) {
+      return;
+    }
+
+    if (reproduccionAleatoria && historialAleatorioRef.current.length > 0) {
+      const anterior = historialAleatorioRef.current.pop();
+      reproducirDesdeCola(colaReproduccion, anterior);
+      return;
+    }
+
+    if (indiceColaReproduccion > 0) {
+      reproducirDesdeCola(colaReproduccion, indiceColaReproduccion - 1);
+    } else if (modoRepeticion === "todo") {
+      reproducirDesdeCola(colaReproduccion, colaReproduccion.length - 1);
     }
   };
 
-  const cancionSiguiente = () => {
-    if (indiceCancionActual < miPlaylist.length - 1) {
-      const nuevoIndice = indiceCancionActual + 1;
-      setIndiceCancionActual(nuevoIndice);
-      seleccionarCancion(miPlaylist[nuevoIndice]);
-      setReproduciendo(true);
+  const cancionSiguiente = ({ auto = false } = {}) => {
+    if (colaReproduccion.length === 0) {
+      return;
     }
+
+    if (reproduccionAleatoria) {
+      historialAleatorioRef.current.push(indiceColaReproduccion);
+      let candidato = indiceColaReproduccion;
+
+      if (colaReproduccion.length > 1) {
+        while (candidato === indiceColaReproduccion) {
+          candidato = Math.floor(Math.random() * colaReproduccion.length);
+        }
+      }
+
+      reproducirDesdeCola(colaReproduccion, candidato);
+      return;
+    }
+
+    const esUltima = indiceColaReproduccion >= colaReproduccion.length - 1;
+
+    if (esUltima) {
+      if (modoRepeticion === "todo") {
+        reproducirDesdeCola(colaReproduccion, 0);
+      } else if (auto) {
+        setReproduciendo(false);
+      }
+      return;
+    }
+
+    reproducirDesdeCola(colaReproduccion, indiceColaReproduccion + 1);
   };
 
   const cambiarVolumen = (event) => {
@@ -2009,11 +2128,13 @@ function App() {
       }
 
       try {
+        setCargandoAudio(true);
         await audio.play();
         setReproduciendo(true);
         limpiarMensajeReproductor();
         registrarReproduccionEnHistorial(cancion);
       } catch {
+        setCargandoAudio(false);
         setReproduciendo(false);
         mostrarMensajeReproductor("No se pudo iniciar la reproducción. Intente otra canción.", "error");
       }
@@ -2195,7 +2316,7 @@ function App() {
                       <ul>
                         {cancionesRecientesSugeridas.map((cancion, indice) => (
                           <li key={`${cancion.titulo}-${cancion.artista}-${indice}`}>
-                            <button type="button" className="search-result-button" onClick={() => seleccionarCancion(cancion)}>
+                            <button type="button" className="search-result-button" onClick={() => verCancion(cancionesRecientesSugeridas, indice)}>
                               <strong>{cancion.titulo}</strong>
                               <span>{cancion.artista} • {cancion.album || "Sin álbum"}</span>
                             </button>
@@ -2239,7 +2360,7 @@ function App() {
 
                           return (
                           <li key={cancion.id || claveMenuPlaylist}>
-                            <button type="button" className="search-result-button" onClick={() => seleccionarCancion(cancion)}>
+                            <button type="button" className="search-result-button" onClick={() => verCancion(resultadosBusqueda.canciones, indice)}>
                               <strong>{cancion.titulo}</strong>
                               <span>{cancion.artista} • {cancion.album}</span>
                             </button>
@@ -2379,7 +2500,7 @@ function App() {
               <button
                 type="button"
                 className="player-button"
-                onClick={() => miPlaylist.length > 0 && reproducirDesdePlaylist(0)}
+                onClick={() => miPlaylist.length > 0 && reproducirDesdeCola(miPlaylist, 0)}
                 disabled={!playlistActiva || miPlaylist.length === 0}
               >
                 ▶ Reproducir
@@ -2455,7 +2576,7 @@ function App() {
                     </thead>
                     <tbody>
                       {miPlaylist.map((song, index) => (
-                        <tr key={song.id} onClick={() => reproducirDesdePlaylist(index)}>
+                        <tr key={song.id} onClick={() => verCancion(miPlaylist, index)}>
                           <td>{index + 1}</td>
                           <td>
                             <div className="song-cell">
@@ -2539,7 +2660,7 @@ function App() {
 
                 {!cargandoFavoritos && favoritos.length > 0 && (
                   <ul className="history-list library-favorites-list">
-                    {favoritos.map((favorito) => (
+                    {favoritos.map((favorito, indice) => (
                       <li className="history-item library-favorite-item" key={favorito.id}>
                         <div>
                           <strong>{favorito.cancion?.titulo || "Canción desconocida"}</strong>
@@ -2549,7 +2670,7 @@ function App() {
                           <button
                             type="button"
                             className="secondary-link-button table-action-button"
-                            onClick={() => reproducirCancionDirecta(favorito.cancion)}
+                            onClick={() => reproducirDesdeCola(favoritos.map((f) => f.cancion), indice)}
                           >
                             ▶
                           </button>
@@ -2586,12 +2707,19 @@ function App() {
               <button 
                 type="button" 
                 className="player-button" 
-                onClick={() => miPlaylist.length > 0 && reproducirDesdePlaylist(0)}
+                onClick={() => miPlaylist.length > 0 && reproducirDesdeCola(miPlaylist, 0)}
                 disabled={miPlaylist.length === 0}
               >
                 ▶ Reproducir
               </button>
-              <button type="button" className="secondary-link-button">⤮ Mezclar</button>
+              <button
+                type="button"
+                className={`secondary-link-button ${reproduccionAleatoria ? "secondary-link-button--activo" : ""}`}
+                onClick={() => setReproduccionAleatoria((valor) => !valor)}
+                aria-pressed={reproduccionAleatoria}
+              >
+                ⤮ Mezclar
+              </button>
             </div>
 
             {miPlaylist.length === 0 ? (
@@ -2609,7 +2737,7 @@ function App() {
                 </thead>
                 <tbody>
                   {miPlaylist.map((song, index) => (
-                    <tr key={song.id} onClick={() => reproducirDesdePlaylist(index)}>
+                    <tr key={song.id} onClick={() => verCancion(miPlaylist, index)}>
                       <td>{index + 1}</td>
                       <td>
                         <div className="song-cell">
@@ -2657,12 +2785,12 @@ function App() {
           <section className="player-screen">
             <div className="backlink" onClick={minimizarPlayer}>← Volver al inicio</div>
             <div
-              className={obtenerClaseCover("player-cover", cancionActual, obtenerPortadaCancionResuelta)}
-              style={obtenerEstiloCover(cancionActual, obtenerPortadaCancionResuelta)}
+              className={obtenerClaseCover("player-cover", cancionVistaPrevia, obtenerPortadaCancionResuelta)}
+              style={obtenerEstiloCover(cancionVistaPrevia, obtenerPortadaCancionResuelta)}
             ></div>
-            <div className="player-title">{cancionActual.titulo}</div>
+            <div className="player-title">{cancionVistaPrevia.titulo}</div>
             <div className="player-artist">
-              {cancionActual.artista} •{" "}
+              {cancionVistaPrevia.artista} •{" "}
               {playlistsUsuario.length > 1 ? (
                 <span className="player-add-playlist-picker">
                   <button
@@ -2679,7 +2807,7 @@ function App() {
                           key={playlist.id}
                           type="button"
                           className="search-playlist-menu-item"
-                          onClick={() => seleccionarPlaylistParaCancion(cancionActual, playlist.id)}
+                          onClick={() => seleccionarPlaylistParaCancion(cancionVistaPrevia, playlist.id)}
                         >
                           {playlist.nombre}
                         </button>
@@ -2699,30 +2827,76 @@ function App() {
               <button
                 type="button"
                 className="secondary-link-button favorite-inline-button"
-                onClick={() => alternarFavoritoCancion(cancionActual)}
+                onClick={() => alternarFavoritoCancion(cancionVistaPrevia)}
               >
-                {esCancionFavorita(cancionActual) ? "♥ Favorita" : "♡ Favorita"}
+                {esCancionFavorita(cancionVistaPrevia) ? "♥ Favorita" : "♡ Favorita"}
               </button>
             </div>
             <input
               className="player-progress-slider"
               type="range"
               min="0"
-              max={duracion || 100}
-              value={progreso}
+              max={estaPrevisualizando ? (cancionVistaPrevia.duracion || 100) : (duracion || 100)}
+              value={estaPrevisualizando ? 0 : progreso}
               onChange={cambiarTiempo}
+              disabled={estaPrevisualizando}
               aria-label="Progreso de reproducción"
             />
             <div className="player-time-row">
-              <span>{Math.floor(progreso / 60)}:{String(Math.floor(progreso % 60)).padStart(2, "0")}</span>
-              <span>{Math.floor(duracion / 60)}:{String(Math.floor(duracion % 60)).padStart(2, "0")}</span>
+              <span>{Math.floor((estaPrevisualizando ? 0 : progreso) / 60)}:{String(Math.floor((estaPrevisualizando ? 0 : progreso) % 60)).padStart(2, "0")}</span>
+              <span>{Math.floor((estaPrevisualizando ? cancionVistaPrevia.duracion || 0 : duracion) / 60)}:{String(Math.floor((estaPrevisualizando ? cancionVistaPrevia.duracion || 0 : duracion) % 60)).padStart(2, "0")}</span>
             </div>
             <div className="player-controls-row">
-              <span className="player-icon-label" aria-hidden="true">⇄</span>
-              <button type="button" className="control-button" onClick={cancionAnterior} disabled={indiceCancionActual === 0}>|◀</button>
-              <span className="play-circle" onClick={alternarReproduccion}>{reproduciendo ? "⏸" : "▶"}</span>
-              <button type="button" className="control-button" onClick={cancionSiguiente} disabled={indiceCancionActual >= miPlaylist.length - 1}>▶|</button>
-              <span className="player-icon-label" aria-hidden="true">↻</span>
+              <button
+                type="button"
+                className={`player-icon-label ${reproduccionAleatoria ? "player-icon-label--activo" : ""}`}
+                onClick={() => setReproduccionAleatoria((valor) => !valor)}
+                aria-pressed={reproduccionAleatoria}
+                aria-label="Aleatorio"
+              >
+                ⇄
+              </button>
+              <button
+                type="button"
+                className="control-button"
+                onClick={estaPrevisualizando ? verCancionAnterior : () => cancionAnterior()}
+                disabled={estaPrevisualizando ? indiceVistaPrevia <= 0 : colaReproduccion.length <= 1}
+              >
+                |◀
+              </button>
+              <span
+                className={`play-circle ${!estaPrevisualizando && cargandoAudio ? "play-circle--cargando" : ""}`}
+                onClick={estaPrevisualizando ? confirmarReproduccionVistaPrevia : alternarReproduccion}
+              >
+                {estaPrevisualizando ? "▶" : cargandoAudio ? "…" : reproduciendo ? "⏸" : "▶"}
+              </span>
+              <button
+                type="button"
+                className="control-button"
+                onClick={estaPrevisualizando ? verCancionSiguiente : () => cancionSiguiente()}
+                disabled={estaPrevisualizando ? indiceVistaPrevia >= colaVistaPrevia.length - 1 : colaReproduccion.length <= 1}
+              >
+                ▶|
+              </button>
+              <button
+                type="button"
+                className={`player-icon-label ${modoRepeticion !== "ninguno" ? "player-icon-label--activo" : ""}`}
+                onClick={() =>
+                  setModoRepeticion((modo) =>
+                    modo === "ninguno" ? "todo" : modo === "todo" ? "una" : "ninguno"
+                  )
+                }
+                aria-label="Repetir"
+                title={
+                  modoRepeticion === "una"
+                    ? "Repetir canción actual"
+                    : modoRepeticion === "todo"
+                    ? "Repetir toda la cola"
+                    : "Repetición desactivada"
+                }
+              >
+                {modoRepeticion === "una" ? "↻¹" : "↻"}
+              </button>
             </div>
             <div className="player-volume-row">
               <span className="player-icon-label player-volume-label" aria-hidden="true">VOL</span>
@@ -2758,7 +2932,7 @@ function App() {
             onSeguir={seguirDesdePerfilPublico}
             onDejarDeSeguir={dejarDeSeguirDesdePerfilPublico}
             onAbrirChat={abrirChatConUsuario}
-            onReproducirCancion={reproducirCancionDirecta}
+            onReproducirCancion={verCancion}
             onVolver={() => cambiarVista(vistaAnteriorPerfil)}
           />
         ) : vistaActiva === "artistas" ? (
@@ -3048,7 +3222,7 @@ function App() {
                   <p className="search-empty">Todavía no hay reproducciones registradas.</p>
                 ) : (
                   <ul className="history-list">
-                    {resumenPerfil.actividadReciente.map((registro) => (
+                    {resumenPerfil.actividadReciente.map((registro, indice) => (
                       <li className="history-item" key={registro.id}>
                         <div>
                           <strong>{registro.cancion?.titulo || "Canción desconocida"}</strong>
@@ -3060,7 +3234,7 @@ function App() {
                           <button
                             type="button"
                             className="secondary-link-button table-action-button"
-                            onClick={() => reproducirCancionDirecta(registro.cancion)}
+                            onClick={() => reproducirDesdeCola(resumenPerfil.actividadReciente.map((r) => r.cancion), indice)}
                           >
                             ▶
                           </button>
@@ -3218,13 +3392,13 @@ function App() {
   {!cargandoPopulares &&
     cancionesPopulares.length > 0 && (
       <div className="tile-grid">
-        {cancionesPopulares.map((cancion) => (
+        {cancionesPopulares.map((cancion, indice) => (
           <button
             type="button"
             className="tile-card popular-song-card"
             key={cancion.id}
             onClick={() =>
-              reproducirCancionDirecta(cancion)
+              verCancion(cancionesPopulares, indice)
             }
           >
             <div
@@ -3279,7 +3453,7 @@ function App() {
                       type="button"
                       className="tile-card popular-song-card"
                       key={`${cancion.titulo}-${cancion.artista}-${indice}`}
-                      onClick={() => seleccionarCancion(cancion)}
+                      onClick={() => verCancion(cancionesContinuarEscuchando, indice)}
                     >
                       <div
                         className={obtenerClaseCover("tile-cover", cancion, obtenerPortadaCancionResuelta)}
@@ -3385,20 +3559,20 @@ function App() {
                 <button
                   type="button"
                   className="mini-icon-button"
-                  onClick={cancionAnterior}
-                  disabled={indiceCancionActual === 0}
+                  onClick={() => cancionAnterior()}
+                  disabled={colaReproduccion.length <= 1}
                   aria-label="Canción anterior"
                 >
                   ◀◀
                 </button>
                 <button type="button" className="mini-icon-button" onClick={alternarReproduccion} aria-label="Reproducir o pausar">
-                  {reproduciendo ? "❚❚" : "▶"}
+                  {cargandoAudio ? "…" : reproduciendo ? "❚❚" : "▶"}
                 </button>
                 <button
                   type="button"
                   className="mini-icon-button"
-                  onClick={cancionSiguiente}
-                  disabled={indiceCancionActual >= miPlaylist.length - 1}
+                  onClick={() => cancionSiguiente()}
+                  disabled={colaReproduccion.length <= 1}
                   aria-label="Canción siguiente"
                 >
                   ▶▶

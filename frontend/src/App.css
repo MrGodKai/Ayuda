@@ -1062,20 +1062,6 @@
   cursor: pointer;
 }
 
-.player-progress-line {
-  width: min(100%, 380px);
-  margin: 0 auto 8px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.player-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #169c46, #1ed760);
-}
-
 .player-progress,
 .player-progress-slider,
 .volume-slider {
@@ -1088,21 +1074,18 @@
 .volume-slider::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #0f0f0f 0%, #1b1b1b 45%, #1ed760 100%);
 }
 
 .player-progress-slider::-moz-range-track,
 .volume-slider::-moz-range-track {
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #0f0f0f 0%, #1b1b1b 45%, #1ed760 100%);
 }
 
 .volume-slider::-moz-range-progress,
 .player-progress-slider::-moz-range-progress {
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #0f0f0f, #1ed760);
 }
 
 .player-progress-slider {
@@ -1121,7 +1104,7 @@
   height: 12px;
   border-radius: 50%;
   background: #ffffff;
-  border: 2px solid #0f6f2f;
+  border: 2px solid var(--accent);
   cursor: pointer;
   margin-top: -2px;
 }
@@ -1133,7 +1116,7 @@
   height: 12px;
   border-radius: 50%;
   background: #ffffff;
-  border: 2px solid #0f6f2f;
+  border: 2px solid var(--accent);
   cursor: pointer;
 }
 
@@ -1143,13 +1126,31 @@
   justify-content: center;
   min-width: 44px;
   padding: 6px 10px;
+  border: none;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-main);
+  font: inherit;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.player-icon-label:hover {
+  background: var(--accent-soft, rgba(37, 99, 235, 0.14));
+}
+
+.player-icon-label.player-icon-label--activo {
+  background: var(--accent);
+  color: var(--on-accent, #ffffff);
+}
+
+.secondary-link-button.secondary-link-button--activo {
+  background: var(--accent);
+  color: var(--on-accent, #ffffff);
 }
 
 .player-volume-label {
@@ -1195,11 +1196,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(90deg, #169c46, #1ed760);
+  background: var(--brand-gradient);
   color: #ffffff;
   font-size: 20px;
   cursor: pointer;
-  box-shadow: 0 14px 34px rgba(22, 156, 70, 0.32);
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.28);
+}
+
+.play-circle--cargando {
+  animation: pulso-cargando 1s ease-in-out infinite;
+}
+
+@keyframes pulso-cargando {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .player-volume-row {
@@ -2302,7 +2316,7 @@
 }
 
 .brand-icon {
-  background: linear-gradient(130deg, #1ed760, #169c46);
+  background: var(--brand-gradient);
   color: #041109;
   border-radius: 12px;
 }
@@ -2380,8 +2394,6 @@
 .save-button,
 .login-button,
 .playlist-create-confirm {
-  background: linear-gradient(90deg, #169c46, #1ed760);
-  color: #05130b;
   border-radius: 999px;
 }
 
@@ -2449,22 +2461,6 @@
   border-radius: 14px;
   background: rgba(18, 18, 18, 0.94);
   border-color: rgba(255, 255, 255, 0.08);
-}
-
-.player-progress-slider::-webkit-slider-runnable-track,
-.volume-slider::-webkit-slider-runnable-track,
-.player-progress-slider::-moz-range-track,
-.volume-slider::-moz-range-track {
-  background: linear-gradient(90deg, #0f0f0f 0%, #1b1b1b 45%, #1ed760 100%);
-}
-
-.player-progress-slider::-webkit-slider-thumb,
-.volume-slider::-webkit-slider-thumb,
-.player-progress::-webkit-slider-thumb,
-.player-progress-slider::-moz-range-thumb,
-.volume-slider::-moz-range-thumb,
-.player-progress::-moz-range-thumb {
-  border-color: #0f6f2f;
 }
 
 .form-error,
@@ -3737,29 +3733,32 @@
 }
 
 .player-progress-slider::-webkit-slider-runnable-track,
-.volume-slider::-webkit-slider-runnable-track,
+.volume-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--border) 0%, var(--border) 45%, var(--accent) 100%);
+}
+
 .player-progress-slider::-moz-range-track,
 .volume-slider::-moz-range-track {
-  background: linear-gradient(90deg, #e3e6f2 0%, #e3e6f2 45%, #2563eb 100%);
+  background: linear-gradient(90deg, var(--border) 0%, var(--border) 45%, var(--accent) 100%);
 }
 
 .volume-slider::-moz-range-progress,
 .player-progress-slider::-moz-range-progress {
-  background: linear-gradient(90deg, #e3e6f2, #2563eb);
-}
-
-.player-progress-bar {
-  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  background: linear-gradient(90deg, var(--border), var(--accent));
 }
 
 .player-progress-slider::-webkit-slider-thumb,
 .volume-slider::-webkit-slider-thumb,
-.player-progress::-webkit-slider-thumb,
+.player-progress::-webkit-slider-thumb {
+  background: #ffffff;
+  border-color: var(--accent);
+}
+
 .player-progress-slider::-moz-range-thumb,
 .volume-slider::-moz-range-thumb,
 .player-progress::-moz-range-thumb {
   background: #ffffff;
-  border-color: #2563eb;
+  border-color: var(--accent);
 }
 
 .form-error,
@@ -4207,7 +4206,10 @@
 }
 
 [data-theme="oscuro"] .player-progress-slider::-webkit-slider-runnable-track,
-[data-theme="oscuro"] .volume-slider::-webkit-slider-runnable-track,
+[data-theme="oscuro"] .volume-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, #0a1220 0%, #16283f 45%, #2fa8bc 100%);
+}
+
 [data-theme="oscuro"] .player-progress-slider::-moz-range-track,
 [data-theme="oscuro"] .volume-slider::-moz-range-track {
   background: linear-gradient(90deg, #0a1220 0%, #16283f 45%, #2fa8bc 100%);
@@ -4218,13 +4220,13 @@
   background: linear-gradient(90deg, #0a1220, #2fa8bc);
 }
 
-[data-theme="oscuro"] .player-progress-bar {
-  background: linear-gradient(90deg, #1f93ac, #ffd479);
-}
-
 [data-theme="oscuro"] .player-progress-slider::-webkit-slider-thumb,
 [data-theme="oscuro"] .volume-slider::-webkit-slider-thumb,
-[data-theme="oscuro"] .player-progress::-webkit-slider-thumb,
+[data-theme="oscuro"] .player-progress::-webkit-slider-thumb {
+  background: #ffffff;
+  border-color: #0d4a5c;
+}
+
 [data-theme="oscuro"] .player-progress-slider::-moz-range-thumb,
 [data-theme="oscuro"] .volume-slider::-moz-range-thumb,
 [data-theme="oscuro"] .player-progress::-moz-range-thumb {

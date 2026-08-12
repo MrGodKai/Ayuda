@@ -150,13 +150,17 @@ function PerfilPublico({
     }
   };
 
-  const reproducir = (cancion) => {
-    onReproducirCancion({
-      ...cancion,
-      artista: perfil.nombre,
-      duracion: cancion.duracionSegundos,
-      portada: cancion.portadaUrl,
-    });
+  const cancionesNormalizadas = esArtista
+    ? perfil.contenido.canciones.map((cancion) => ({
+        ...cancion,
+        artista: perfil.nombre,
+        duracion: cancion.duracionSegundos,
+        portada: cancion.portadaUrl,
+      }))
+    : [];
+
+  const verCancionDelPerfil = (indice) => {
+    onReproducirCancion(cancionesNormalizadas, indice);
   };
 
   return (
@@ -324,12 +328,12 @@ function PerfilPublico({
                 <p className="pp-empty">Este artista todavía no publicó canciones.</p>
               ) : (
                 <div className="pp-song-grid">
-                  {perfil.contenido.canciones.map((cancion) => (
+                  {cancionesNormalizadas.map((cancion, indice) => (
                     <button
                       type="button"
                       key={cancion.id}
                       className="pp-song-card"
-                      onClick={() => reproducir(cancion)}
+                      onClick={() => verCancionDelPerfil(indice)}
                     >
                       <div
                         className="pp-song-cover"

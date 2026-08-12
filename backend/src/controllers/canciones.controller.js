@@ -92,11 +92,13 @@ exports.obtenerCancionesPopulares = async (
 /**
  * Transmite el audio de una canción. Si el archivo vive en un
  * origen externo (por ejemplo archive.org), lo pide desde el
- * backend y lo retransmite tal cual: algunos CDN externos devuelven
+ * backend y lo retransmite tal cual, reenviando el header Range
+ * cuando el navegador lo manda (para que arranque más rápido y se
+ * pueda buscar dentro de la canción). Algunos CDN externos devuelven
  * respuestas parciales (206) sin el header Content-Range, algo que
  * los navegadores rechazan al reproducir <audio> directo contra esa
- * URL. Pedimos siempre el archivo completo acá y lo reenviamos,
- * así el navegador recibe una respuesta HTTP válida.
+ * URL: en ese caso pedimos el archivo completo y lo reenviamos como
+ * 200, así el navegador siempre recibe una respuesta HTTP válida.
  */
 exports.transmitirAudioCancion = async (req, res) => {
   try {
@@ -123,15 +125,58 @@ exports.transmitirAudioCancion = async (req, res) => {
       return res.redirect(urlAbsoluta(audioUrlCrudo));
     }
 
-    const respuestaExterna = await fetch(audioUrlCrudo);
+    const rangoPedido = req.headers.range;
 
-    if (!respuestaExterna.ok || !respuestaExterna.body) {
+    // Timeout manual acotado SOLO a la conexión/espera de headers: si usáramos
+    // AbortSignal.timeout aquí, la misma señal seguiría "viva" durante todo el
+    // streaming del cuerpo (que puede tardar más de 15s en una canción real) y
+    // abortaría la descarga a mitad de camino. Por eso cancelamos el timer en
+    // cuanto el fetch resuelve, sea éxito o error.
+    const controladorConexion = new AbortController();
+    const timeoutConexion = setTimeout(() => controladorConexion.abort(), 15000);
+    let respuestaExterna;
+
+    try {
+      respuestaExterna = await fetch(audioUrlCrudo, {
+        headers: rangoPedido ? { Range: rangoPedido } : {},
+        signal: controladorConexion.signal,
+      });
+    } catch (errorFetch) {
+      if (errorFetch.name === "AbortError" || errorFetch.name === "TimeoutError") {
+        return res.status(504).json({
+          mensaje: "El origen externo tardó demasiado en responder.",
+        });
+      }
+      throw errorFetch;
+    } finally {
+      clearTimeout(timeoutConexion);
+    }
+
+    if (!respuestaExterna.ok && respuestaExterna.status !== 206) {
       return res.status(502).json({
         mensaje: "No se pudo obtener el audio desde el origen externo.",
       });
     }
 
-    res.status(200);
+    if (!respuestaExterna.body) {
+      return res.status(502).json({
+        mensaje: "No se pudo obtener el audio desde el origen externo.",
+      });
+    }
+
+    const contentRangeExterno = respuestaExterna.headers.get("content-range");
+
+    if (respuestaExterna.status === 206 && contentRangeExterno) {
+      // El origen externo sí soporta range requests correctamente: lo retransmitimos tal cual.
+      res.status(206);
+      res.setHeader("Content-Range", contentRangeExterno);
+      res.setHeader("Accept-Ranges", "bytes");
+    } else {
+      // Comportamiento original: servir el archivo completo. Cubre el caso de
+      // orígenes que devuelven 206 sin Content-Range (motivo por el que existe este proxy).
+      res.status(200);
+    }
+
     res.setHeader(
       "Content-Type",
       respuestaExterna.headers.get("content-type") || "audio/mpeg"
@@ -145,7 +190,23 @@ exports.transmitirAudioCancion = async (req, res) => {
 
     res.setHeader("Cache-Control", "public, max-age=86400");
 
-    Readable.fromWeb(respuestaExterna.body).pipe(res);
+    const flujoAudio = Readable.fromWeb(respuestaExterna.body);
+
+    // Sin este listener, un error del stream (conexión cortada a mitad de
+    // transmisión, origen externo que se cae, etc.) queda sin manejar y
+    // Node tira todo el proceso abajo (crashea el backend completo, no solo
+    // esta descarga). Lo atrapamos acá y cerramos la respuesta prolijamente.
+    flujoAudio.on("error", (errorFlujo) => {
+      console.error("Error al transmitir el cuerpo del audio:", errorFlujo);
+
+      if (!res.headersSent) {
+        res.status(502).json({ mensaje: "Se interrumpió la transmisión del audio." });
+      } else {
+        res.destroy();
+      }
+    });
+
+    flujoAudio.pipe(res);
   } catch (error) {
     console.error("Error al transmitir el audio de la canción:", error);
 

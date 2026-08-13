@@ -204,6 +204,11 @@ exports.registrar = async (req, res) => {
      * No se acepta un rol enviado por
      * el frontend.
      */
+console.log("=== REGISTRO ===");
+console.log("DB HOST:", process.env.DB_HOST);
+console.log("DB NAME:", process.env.DB_NAME);
+console.log("Correo:", correo);
+
     const [resultado] =
       await pool.execute(
         `INSERT INTO usuarios

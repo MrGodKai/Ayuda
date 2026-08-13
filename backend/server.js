@@ -49,6 +49,10 @@ const perfilPublicoRoutes = require(
   "./src/routes/perfil-publico.routes"
 );
 
+const playlistsRoutes = require(
+  "./src/routes/playlists.routes"
+);
+
 const app = express();
 
 const PORT = Number(
@@ -164,6 +168,11 @@ app.use(
 app.use(
   "/api/perfiles",
   perfilPublicoRoutes
+);
+
+app.use(
+  "/api/playlists",
+  playlistsRoutes
 );
 
 /*
@@ -341,6 +350,57 @@ async function iniciarServidor() {
            FOREIGN KEY (id_usuario_seguido)
            REFERENCES usuarios(id_usuario)
            ON DELETE CASCADE
+           ON UPDATE CASCADE
+       )`
+    );
+
+    await conexion.execute(
+      `CREATE TABLE IF NOT EXISTS playlists (
+         id_playlist INT AUTO_INCREMENT PRIMARY KEY,
+         id_usuario INT NOT NULL,
+         nombre VARCHAR(150) NOT NULL,
+         descripcion VARCHAR(500) NULL,
+         portada_url VARCHAR(500) NULL,
+         publica BOOLEAN NOT NULL DEFAULT TRUE,
+         creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+         INDEX idx_playlists_usuario (id_usuario, creado_en),
+
+         CONSTRAINT fk_playlists_usuario
+           FOREIGN KEY (id_usuario)
+           REFERENCES usuarios(id_usuario)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE
+       )`
+    );
+
+    await conexion.execute(
+      `CREATE TABLE IF NOT EXISTS playlist_canciones (
+         id_playlist_cancion INT AUTO_INCREMENT PRIMARY KEY,
+         id_playlist INT NOT NULL,
+         id_cancion INT NULL,
+         titulo_cancion VARCHAR(150) NOT NULL,
+         artista_cancion VARCHAR(150) NOT NULL,
+         album_cancion VARCHAR(150) NULL,
+         duracion_segundos INT NULL,
+         portada_url VARCHAR(500) NULL,
+         audio_url VARCHAR(500) NULL,
+         agregado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+         INDEX idx_playlist_canciones_playlist (id_playlist, agregado_en),
+         UNIQUE KEY uk_playlist_cancion (id_playlist, titulo_cancion, artista_cancion),
+
+         CONSTRAINT fk_playlist_canciones_playlist
+           FOREIGN KEY (id_playlist)
+           REFERENCES playlists(id_playlist)
+           ON DELETE CASCADE
+           ON UPDATE CASCADE,
+
+         CONSTRAINT fk_playlist_canciones_cancion
+           FOREIGN KEY (id_cancion)
+           REFERENCES canciones(id_cancion)
+           ON DELETE SET NULL
            ON UPDATE CASCADE
        )`
     );

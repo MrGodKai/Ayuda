@@ -59,6 +59,41 @@ async function contarSeguidores(idUsuario) {
   };
 }
 
+function mapearUsuarioRed(fila) {
+  return {
+    id: fila.id_usuario,
+    nombre: fila.nombre,
+    fotoUrl: urlAbsoluta(fila.foto_perfil),
+  };
+}
+
+async function obtenerRedSeguidoresPerfil(idUsuario) {
+  const [siguiendo] = await pool.execute(
+    `SELECT u.id_usuario, u.nombre, u.foto_perfil
+     FROM seguidores_usuarios s
+     INNER JOIN usuarios u ON u.id_usuario = s.id_usuario_seguido
+     WHERE s.id_usuario_seguidor = ?
+       AND u.estado = TRUE
+     ORDER BY s.creado_en DESC, s.id_seguimiento DESC`,
+    [idUsuario]
+  );
+
+  const [seguidores] = await pool.execute(
+    `SELECT u.id_usuario, u.nombre, u.foto_perfil
+     FROM seguidores_usuarios s
+     INNER JOIN usuarios u ON u.id_usuario = s.id_usuario_seguidor
+     WHERE s.id_usuario_seguido = ?
+       AND u.estado = TRUE
+     ORDER BY s.creado_en DESC, s.id_seguimiento DESC`,
+    [idUsuario]
+  );
+
+  return {
+    siguiendo: siguiendo.map(mapearUsuarioRed),
+    seguidores: seguidores.map(mapearUsuarioRed),
+  };
+}
+
 async function obtenerConexionesComunes(idViewer, idObjetivo) {
   const [muestra] = await pool.execute(
     `SELECT u.id_usuario, u.nombre, u.foto_perfil
@@ -98,6 +133,41 @@ async function obtenerConexionesComunes(idViewer, idObjetivo) {
       fotoUrl: urlAbsoluta(fila.foto_perfil),
     })),
   };
+}
+
+async function obtenerPlaylistsUsuario(idUsuario, { soloPublicas }) {
+  const [filas] = await pool.execute(
+    `SELECT id_playlist, nombre, descripcion, portada_url, publica, creado_en
+     FROM playlists
+     WHERE id_usuario = ?
+       ${soloPublicas ? "AND publica = TRUE" : ""}
+     ORDER BY creado_en DESC`,
+    [idUsuario]
+  );
+
+  if (filas.length === 0) {
+    return [];
+  }
+
+  const conteos = await Promise.all(
+    filas.map((fila) =>
+      pool
+        .execute(
+          `SELECT COUNT(*) AS total FROM playlist_canciones WHERE id_playlist = ?`,
+          [fila.id_playlist]
+        )
+        .then(([[{ total }]]) => total)
+    )
+  );
+
+  return filas.map((fila, indice) => ({
+    id: fila.id_playlist,
+    nombre: fila.nombre,
+    descripcion: fila.descripcion || "",
+    portadaUrl: urlAbsoluta(fila.portada_url),
+    publica: Boolean(fila.publica),
+    totalCanciones: conteos[indice],
+  }));
 }
 
 async function obtenerContenidoUsuario(idUsuario) {
@@ -190,6 +260,14 @@ exports.obtenerPerfilPublicoUsuario = async (req, res) => {
       ? await obtenerContenidoUsuario(idObjetivo)
       : { historial: [], favoritos: [], artistasFavoritos: [] };
 
+    contenido.playlists = puedeVerActividad
+      ? await obtenerPlaylistsUsuario(idObjetivo, { soloPublicas: !esPropio })
+      : [];
+
+    const redSeguidores = puedeVerActividad
+      ? await obtenerRedSeguidoresPerfil(idObjetivo)
+      : { siguiendo: [], seguidores: [] };
+
     return res.status(200).json({
       perfil: {
         tipo: "usuario",
@@ -209,6 +287,7 @@ exports.obtenerPerfilPublicoUsuario = async (req, res) => {
         estadisticas,
         relacion,
         conexionesComunes,
+        redSeguidores,
         contenido,
       },
     });
@@ -310,6 +389,16 @@ exports.obtenerPerfilPublicoArtista = async (req, res) => {
       }
     });
 
+    const playlists =
+      idUsuarioArtista !== null
+        ? await obtenerPlaylistsUsuario(idUsuarioArtista, { soloPublicas: !esPropio })
+        : [];
+
+    const redSeguidores =
+      idUsuarioArtista !== null
+        ? await obtenerRedSeguidoresPerfil(idUsuarioArtista)
+        : { siguiendo: [], seguidores: [] };
+
     return res.status(200).json({
       perfil: {
         tipo: "artista",
@@ -332,9 +421,11 @@ exports.obtenerPerfilPublicoArtista = async (req, res) => {
         estadisticas,
         relacion,
         conexionesComunes,
+        redSeguidores,
         contenido: {
           canciones,
           albums: [...albumsMap.values()],
+          playlists,
         },
       },
     });

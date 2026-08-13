@@ -63,11 +63,13 @@ function PerfilPublico({
   onDejarDeSeguir,
   onAbrirChat,
   onReproducirCancion,
+  onVerPerfilUsuario,
   onVolver,
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [procesandoSeguir, setProcesandoSeguir] = useState(false);
+  const [tabRed, setTabRed] = useState(null);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -84,6 +86,10 @@ function PerfilPublico({
     document.addEventListener("mousedown", cerrarSiEsAfuera);
     return () => document.removeEventListener("mousedown", cerrarSiEsAfuera);
   }, [menuAbierto]);
+
+  useEffect(() => {
+    setTabRed(null);
+  }, [perfil?.idUsuario, perfil?.idArtista]);
 
   const fraseDebut = useMemo(() => {
     if (!perfil?.fechaDebut) {
@@ -117,6 +123,7 @@ function PerfilPublico({
 
   const esArtista = perfil.tipo === "artista";
   const mostrarAccionesSocial = !perfil.esPropio && perfil.idUsuario !== null;
+  const mostrarEstadisticasSociales = perfil.idUsuario !== null;
   const fechaUnionLegible = formatearFechaLarga(perfil.fechaUnion);
 
   const copiarEnlace = async () => {
@@ -162,6 +169,31 @@ function PerfilPublico({
   const verCancionDelPerfil = (indice) => {
     onReproducirCancion(cancionesNormalizadas, indice);
   };
+
+  const listaPlaylists = perfil.contenido.playlists || [];
+
+  const seccionPlaylists = listaPlaylists.length > 0 && (
+    <div className="pp-section">
+      <p className="pp-section-title">Playlists</p>
+      <div className="pp-song-grid">
+        {listaPlaylists.map((playlist) => (
+          <div className="pp-song-card pp-song-card--static" key={playlist.id}>
+            <div
+              className="pp-song-cover"
+              style={playlist.portadaUrl ? { backgroundImage: `url("${playlist.portadaUrl}")` } : undefined}
+            >
+              {!playlist.portadaUrl && <span aria-hidden="true">♫</span>}
+            </div>
+            <div className="pp-song-title">
+              {playlist.nombre}
+              {perfil.esPropio && !playlist.publica ? " 🔒" : ""}
+            </div>
+            <div className="pp-song-sub">{playlist.totalCanciones} canciones</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <section className="pp-shell">
@@ -275,14 +307,57 @@ function PerfilPublico({
           )}
         </ul>
 
-        {mostrarAccionesSocial && (
+        {mostrarEstadisticasSociales && (
           <div className="pp-stats">
-            <span className="pp-stat">
+            <button
+              type="button"
+              className={`pp-stat pp-stat--link${tabRed === "siguiendo" ? " pp-stat--active" : ""}`}
+              onClick={() => setTabRed((anterior) => (anterior === "siguiendo" ? null : "siguiendo"))}
+            >
               <strong>{formatearConteo(perfil.estadisticas.siguiendo)}</strong> Siguiendo
-            </span>
-            <span className="pp-stat">
+            </button>
+            <button
+              type="button"
+              className={`pp-stat pp-stat--link${tabRed === "seguidores" ? " pp-stat--active" : ""}`}
+              onClick={() => setTabRed((anterior) => (anterior === "seguidores" ? null : "seguidores"))}
+            >
               <strong>{formatearConteo(perfil.estadisticas.seguidores)}</strong> Seguidores
-            </span>
+            </button>
+          </div>
+        )}
+
+        {tabRed && (
+          <div className="pp-follow-panel">
+            <div className="sp-follow-pane">
+              {(perfil.redSeguidores?.[tabRed] || []).length === 0 ? (
+                <p className="sp-follow-empty">
+                  {tabRed === "siguiendo" ? "Todavía no sigue a nadie." : "Todavía no tiene seguidores."}
+                </p>
+              ) : (
+                <ul className="sp-user-list">
+                  {perfil.redSeguidores[tabRed].map((persona) => (
+                    <li
+                      key={persona.id}
+                      className="sp-user-row sp-user-row--clickable"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onVerPerfilUsuario?.(persona.id)}
+                    >
+                      <span className="sp-avatar">
+                        {persona.fotoUrl ? (
+                          <img src={persona.fotoUrl} alt={persona.nombre} />
+                        ) : (
+                          String(persona.nombre || "U").charAt(0).toUpperCase()
+                        )}
+                      </span>
+                      <div className="sp-user-info">
+                        <strong>{persona.nombre || "Usuario"}</strong>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
@@ -370,11 +445,16 @@ function PerfilPublico({
                 </div>
               )}
             </div>
+
+            {seccionPlaylists}
           </>
         ) : !perfil.puedeVerActividad ? (
           <p className="pp-locked">🔒 Este perfil es privado. Solo puede ver su actividad si se siguen mutuamente.</p>
         ) : (
-          <div className="pp-user-columns">
+          <>
+            {seccionPlaylists}
+
+            <div className="pp-user-columns">
             <div className="pp-section">
               <p className="pp-section-title">Escuchado recientemente</p>
               {perfil.contenido.historial.length === 0 ? (
@@ -421,7 +501,8 @@ function PerfilPublico({
                 </div>
               )}
             </div>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </section>

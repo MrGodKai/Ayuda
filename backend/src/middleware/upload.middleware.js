@@ -14,6 +14,8 @@ const UPLOADS_ROOT_CANCIONES = path.join(__dirname, "../../uploads/canciones");
 const CARPETA_AUDIO = path.join(UPLOADS_ROOT_CANCIONES, "audio");
 const CARPETA_PORTADA_CANCION = path.join(UPLOADS_ROOT_CANCIONES, "portada");
 
+const CARPETA_PORTADA_PLAYLIST = path.join(__dirname, "../../uploads/playlists/portada");
+
 [
   CARPETA_FOTOS,
   CARPETA_PORTADAS,
@@ -21,6 +23,7 @@ const CARPETA_PORTADA_CANCION = path.join(UPLOADS_ROOT_CANCIONES, "portada");
   CARPETA_PORTADA_USUARIO,
   CARPETA_AUDIO,
   CARPETA_PORTADA_CANCION,
+  CARPETA_PORTADA_PLAYLIST,
 ].forEach((carpeta) => {
   fs.mkdirSync(carpeta, { recursive: true });
 });
@@ -81,6 +84,12 @@ const uploadFotoUsuario = multer({
 
 const uploadPortadaUsuario = multer({
   storage: crearStorage(CARPETA_PORTADA_USUARIO),
+  fileFilter: filtrarImagen,
+  limits: LIMITES,
+});
+
+const uploadPortadaPlaylist = multer({
+  storage: crearStorage(CARPETA_PORTADA_PLAYLIST),
   fileFilter: filtrarImagen,
   limits: LIMITES,
 });
@@ -178,6 +187,10 @@ function rutaPublicaPortadaUsuario(nombreArchivo) {
   return `/uploads/usuarios/portada/${nombreArchivo}`;
 }
 
+function rutaPublicaPortadaPlaylist(nombreArchivo) {
+  return `/uploads/playlists/portada/${nombreArchivo}`;
+}
+
 function eliminarArchivoPublico(rutaPublica) {
   if (!rutaPublica || !rutaPublica.startsWith("/uploads/")) {
     return;
@@ -215,11 +228,13 @@ module.exports = {
   uploadPortadaArtista,
   uploadFotoUsuario,
   uploadPortadaUsuario,
+  uploadPortadaPlaylist,
   uploadArchivosCancion,
   rutaPublicaFoto,
   rutaPublicaPortada,
   rutaPublicaFotoUsuario,
   rutaPublicaPortadaUsuario,
+  rutaPublicaPortadaPlaylist,
   rutaPublicaAudioCancion,
   rutaPublicaPortadaCancion,
   eliminarArchivoPublico,

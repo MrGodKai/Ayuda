@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import Login from "./components/Login";
+import IstreamLogo from "./components/IstreamLogo";
 import PerfilArtista from "./components/PerfilArtista";
 import GestionCanciones from "./components/GestionCanciones";
 import Social from "./components/Social";
@@ -26,6 +27,74 @@ const FOTO_ARTISTA_BLANCA =
   );
 
 const PLAYER_PLAYLIST_MENU_ID = "player-current-song";
+
+const ICONO_SVG_PROPS = {
+  width: 18,
+  height: 18,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  className: "sidebar-link-icon",
+  "aria-hidden": "true",
+};
+
+function IconoInicio() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9" />
+    </svg>
+  );
+}
+
+function IconoSocial() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 4v-4H6a2 2 0 0 1-2-2V6Z" />
+    </svg>
+  );
+}
+
+function IconoArtistas() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" />
+      <path d="M6 11v1a6 6 0 0 0 12 0v-1" />
+      <path d="M12 19v3" />
+      <path d="M9 22h6" />
+    </svg>
+  );
+}
+
+function IconoBiblioteca() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
+}
+
+function IconoPerfil() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5 20c1.5-4 4-5.5 7-5.5s5.5 1.5 7 5.5" />
+    </svg>
+  );
+}
+
+function IconoMiMusica() {
+  return (
+    <svg {...ICONO_SVG_PROPS}>
+      <path d="M12 16V4" />
+      <path d="M7 9l5-5 5 5" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
 
 function obtenerUsuarioGuardado() {
   const token =
@@ -214,12 +283,17 @@ function App() {
   const [reproduccionAleatoria, setReproduccionAleatoria] = useState(false);
   const [cargandoAudio, setCargandoAudio] = useState(false);
   const [playlistsUsuario, setPlaylistsUsuario] = useState([]);
+  const [cargandoPlaylists, setCargandoPlaylists] = useState(false);
+  const [errorPlaylists, setErrorPlaylists] = useState("");
   const [playlistSeleccionadaId, setPlaylistSeleccionadaId] = useState(null);
   const [menuPlaylistAbierto, setMenuPlaylistAbierto] = useState(false);
   const [menuAgregarPlaylistCancionId, setMenuAgregarPlaylistCancionId] = useState(null);
   const [menuAccionesCancionId, setMenuAccionesCancionId] = useState(null);
   const [crearPlaylistAbierto, setCrearPlaylistAbierto] = useState(false);
   const [nombreNuevaPlaylist, setNombreNuevaPlaylist] = useState("");
+  const [descripcionNuevaPlaylist, setDescripcionNuevaPlaylist] = useState("");
+  const [portadaNuevaPlaylistArchivo, setPortadaNuevaPlaylistArchivo] = useState(null);
+  const [portadaNuevaPlaylistPreview, setPortadaNuevaPlaylistPreview] = useState(null);
   const [mensajeReproductor, setMensajeReproductor] = useState("");
   const [tipoMensajeReproductor, setTipoMensajeReproductor] = useState("error");
   const [mensajeReproductorVisible, setMensajeReproductorVisible] = useState(false);
@@ -1332,6 +1406,7 @@ function App() {
 
     cargarHistorial();
     cargarFavoritos();
+    cargarPlaylists();
   }, [usuario?.id]);
 
   useEffect(() => {
@@ -1928,8 +2003,40 @@ function App() {
     setProgreso(siguienteTiempo);
   };
 
-  const agregarAPlaylist = (cancion, playlistIdDestino = playlistSeleccionadaId) => {
-    if (!playlistIdDestino) {
+  const cargarPlaylists = async () => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!headers) {
+      setPlaylistsUsuario([]);
+      return;
+    }
+
+    try {
+      setCargandoPlaylists(true);
+      setErrorPlaylists("");
+
+      const respuesta = await fetch(`${API_URL}/playlists`, { headers });
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudieron cargar tus playlists.");
+      }
+
+      setPlaylistsUsuario(datos.playlists || []);
+    } catch (error) {
+      setErrorPlaylists(
+        normalizarErrorRed(error, "No se pudieron cargar tus playlists.")
+      );
+      setPlaylistsUsuario([]);
+    } finally {
+      setCargandoPlaylists(false);
+    }
+  };
+
+  const agregarAPlaylist = async (cancion, playlistIdDestino = playlistSeleccionadaId) => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!playlistIdDestino || !headers) {
       mostrarMensajeReproductor("No hay una playlist creada.", "error");
       return;
     }
@@ -1941,26 +2048,50 @@ function App() {
       return;
     }
 
-    const yaExiste = playlistDestino.canciones.some((c) => c.id === cancion.id);
-    if (!yaExiste) {
+    try {
+      const respuesta = await fetch(`${API_URL}/playlists/${playlistIdDestino}/canciones`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          idCancion: cancion.id,
+          titulo: cancion.titulo,
+          artista: cancion.artista,
+          album: cancion.album,
+          duracion: cancion.duracion,
+          portada: obtenerPortadaCancionDirecta(cancion),
+          audioUrl: cancion.audioUrl,
+        }),
+      });
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo agregar la canción a la playlist.");
+      }
+
+      if (datos.yaExistia) {
+        mostrarMensajeReproductor(`La canción ya está en ${playlistDestino.nombre}.`, "error");
+        return;
+      }
+
       setPlaylistsUsuario((anterior) =>
         anterior.map((playlist) =>
           playlist.id === playlistIdDestino
-            ? {
-                ...playlist,
-                canciones: [...playlist.canciones, cancion],
-              }
+            ? { ...playlist, canciones: [...playlist.canciones, datos.cancion] }
             : playlist
         )
       );
+
       setBusqueda("");
       setBusquedaAbierta(false);
       setMenuAgregarPlaylistCancionId(null);
       mostrarMensajeReproductor(`Canción agregada a ${playlistDestino.nombre}.`, "success");
-      return;
+    } catch (error) {
+      mostrarMensajeReproductor(
+        normalizarErrorRed(error, "No se pudo agregar la canción a la playlist."),
+        "error"
+      );
     }
-
-    mostrarMensajeReproductor(`La canción ya está en ${playlistDestino.nombre}.`, "error");
   };
 
   const seleccionarPlaylistParaCancion = (cancion, playlistIdDestino) => {
@@ -1976,11 +2107,6 @@ function App() {
       return;
     }
 
-    if (playlistsUsuario.length === 1) {
-      agregarAPlaylist(cancionVistaPrevia, playlistsUsuario[0].id);
-      return;
-    }
-
     setMenuAgregarPlaylistCancionId((anterior) =>
       anterior === PLAYER_PLAYLIST_MENU_ID ? null : PLAYER_PLAYLIST_MENU_ID
     );
@@ -1992,13 +2118,34 @@ function App() {
   };
 
   const cancelarCreacionPlaylist = () => {
+    if (portadaNuevaPlaylistPreview) {
+      URL.revokeObjectURL(portadaNuevaPlaylistPreview);
+    }
+
     setCrearPlaylistAbierto(false);
     setNombreNuevaPlaylist("");
+    setDescripcionNuevaPlaylist("");
+    setPortadaNuevaPlaylistArchivo(null);
+    setPortadaNuevaPlaylistPreview(null);
   };
 
-  const crearPlaylist = (evento) => {
+  const seleccionarPortadaNuevaPlaylist = (archivo) => {
+    if (!archivo) {
+      return;
+    }
+
+    if (portadaNuevaPlaylistPreview) {
+      URL.revokeObjectURL(portadaNuevaPlaylistPreview);
+    }
+
+    setPortadaNuevaPlaylistArchivo(archivo);
+    setPortadaNuevaPlaylistPreview(URL.createObjectURL(archivo));
+  };
+
+  const crearPlaylist = async (evento) => {
     evento.preventDefault();
 
+    const headers = obtenerHeadersAutenticados();
     const nombreLimpio = nombreNuevaPlaylist.trim();
 
     if (!nombreLimpio) {
@@ -2006,50 +2153,183 @@ function App() {
       return;
     }
 
-    const nuevaPlaylist = {
-      id: `playlist-${Date.now()}`,
-      nombre: nombreLimpio,
-      canciones: [],
-    };
-
-    setPlaylistsUsuario((anterior) => [...anterior, nuevaPlaylist]);
-    setPlaylistSeleccionadaId(nuevaPlaylist.id);
-    setCrearPlaylistAbierto(false);
-    setNombreNuevaPlaylist("");
-  };
-
-  const eliminarPlaylistCompleta = () => {
-    if (!playlistActiva) {
+    if (!headers) {
+      mostrarMensajeReproductor("Debe iniciar sesión nuevamente.", "error");
       return;
     }
 
-    setPlaylistsUsuario((anterior) => {
-      const siguiente = anterior.filter((playlist) => playlist.id !== playlistActiva.id);
-      setPlaylistSeleccionadaId(siguiente[0]?.id || null);
-      return siguiente;
-    });
+    try {
+      const respuesta = await fetch(`${API_URL}/playlists`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          nombre: nombreLimpio,
+          descripcion: descripcionNuevaPlaylist.trim(),
+          publica: true,
+        }),
+      });
 
-    setIndiceCancionActual(0);
-    setMenuPlaylistAbierto(false);
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo crear la playlist.");
+      }
+
+      let playlistCreada = datos.playlist;
+
+      if (portadaNuevaPlaylistArchivo) {
+        try {
+          const cuerpoPortada = new FormData();
+          cuerpoPortada.append("portada", portadaNuevaPlaylistArchivo);
+
+          const respuestaPortada = await fetch(`${API_URL}/playlists/${playlistCreada.id}/portada`, {
+            method: "POST",
+            headers: { Authorization: headers.Authorization },
+            body: cuerpoPortada,
+          });
+
+          const datosPortada = await leerJsonSeguro(respuestaPortada);
+
+          if (respuestaPortada.ok) {
+            playlistCreada = { ...playlistCreada, portada: datosPortada.portada };
+          }
+        } catch {
+          // La playlist ya se creó; la portada es opcional y no bloquea el flujo.
+        }
+      }
+
+      if (portadaNuevaPlaylistPreview) {
+        URL.revokeObjectURL(portadaNuevaPlaylistPreview);
+      }
+
+      setPlaylistsUsuario((anterior) => [...anterior, playlistCreada]);
+      setPlaylistSeleccionadaId(playlistCreada.id);
+      setCrearPlaylistAbierto(false);
+      setNombreNuevaPlaylist("");
+      setDescripcionNuevaPlaylist("");
+      setPortadaNuevaPlaylistArchivo(null);
+      setPortadaNuevaPlaylistPreview(null);
+    } catch (error) {
+      mostrarMensajeReproductor(normalizarErrorRed(error, "No se pudo crear la playlist."), "error");
+    }
   };
 
-  const eliminarDePlaylist = (cancionId) => {
-    if (!playlistActiva) {
+  const abrirPlaylist = (id) => {
+    setPlaylistSeleccionadaId(id);
+    setMenuPlaylistAbierto(false);
+    setMenuAccionesCancionId(null);
+  };
+
+  const volverAGrillaBiblioteca = () => {
+    setPlaylistSeleccionadaId(null);
+    setMenuPlaylistAbierto(false);
+    setMenuAccionesCancionId(null);
+  };
+
+  const eliminarPlaylistCompleta = async () => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!playlistActiva || !headers) {
+      return;
+    }
+
+    try {
+      const respuesta = await fetch(`${API_URL}/playlists/${playlistActiva.id}`, {
+        method: "DELETE",
+        headers,
+      });
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo eliminar la playlist.");
+      }
+
+      setPlaylistsUsuario((anterior) => anterior.filter((playlist) => playlist.id !== playlistActiva.id));
+      setPlaylistSeleccionadaId(null);
+      setMenuPlaylistAbierto(false);
+    } catch (error) {
+      mostrarMensajeReproductor(normalizarErrorRed(error, "No se pudo eliminar la playlist."), "error");
+    }
+  };
+
+  const eliminarDePlaylist = async (idPlaylistCancion) => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!playlistActiva || !headers) {
       return;
     }
 
     setMenuAccionesCancionId(null);
 
-    setPlaylistsUsuario((anterior) =>
-      anterior.map((playlist) =>
-        playlist.id === playlistActiva.id
-          ? {
-              ...playlist,
-              canciones: playlist.canciones.filter((c) => c.id !== cancionId),
-            }
-          : playlist
-      )
-    );
+    try {
+      const respuesta = await fetch(
+        `${API_URL}/playlists/${playlistActiva.id}/canciones/${idPlaylistCancion}`,
+        { method: "DELETE", headers }
+      );
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo eliminar la canción de la playlist.");
+      }
+
+      setPlaylistsUsuario((anterior) =>
+        anterior.map((playlist) =>
+          playlist.id === playlistActiva.id
+            ? {
+                ...playlist,
+                canciones: playlist.canciones.filter((c) => c.id !== idPlaylistCancion),
+              }
+            : playlist
+        )
+      );
+    } catch (error) {
+      mostrarMensajeReproductor(
+        normalizarErrorRed(error, "No se pudo eliminar la canción de la playlist."),
+        "error"
+      );
+    }
+  };
+
+  const alternarPrivacidadPlaylist = async () => {
+    const headers = obtenerHeadersAutenticados();
+
+    if (!playlistActiva || !headers) {
+      return;
+    }
+
+    const nuevaPublica = !playlistActiva.publica;
+
+    try {
+      const respuesta = await fetch(`${API_URL}/playlists/${playlistActiva.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ publica: nuevaPublica }),
+      });
+
+      const datos = await leerJsonSeguro(respuesta);
+
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "No se pudo actualizar la playlist.");
+      }
+
+      setPlaylistsUsuario((anterior) =>
+        anterior.map((playlist) =>
+          playlist.id === playlistActiva.id
+            ? { ...playlist, publica: datos.playlist.publica }
+            : playlist
+        )
+      );
+
+      setMenuPlaylistAbierto(false);
+      mostrarMensajeReproductor(
+        nuevaPublica ? "La playlist ahora es pública." : "La playlist ahora es privada.",
+        "success"
+      );
+    } catch (error) {
+      mostrarMensajeReproductor(normalizarErrorRed(error, "No se pudo actualizar la playlist."), "error");
+    }
   };
 
   const reproducirDesdeCola = (lista, indice, { autoplay = true } = {}) => {
@@ -2175,13 +2455,6 @@ function App() {
     setUsuario(null);
     setMensajePerfil("");
     setErrorPerfil("");
-    setFormContrasenaPerfil({
-      contrasenaActual: "",
-      contrasenaNueva: "",
-      confirmarContrasenaNueva: "",
-    });
-    setMensajeContrasenaPerfil("");
-    setErrorContrasenaPerfil("");
     setMiniPlayerVisible(false);
     setHistorialReproducciones([]);
     setErrorHistorial("");
@@ -2199,6 +2472,11 @@ function App() {
     setCancionesPopulares([]);
     setErrorPopulares("");
     setCargandoPopulares(false);
+    setPerfilPublico(null);
+    setErrorPerfilPublico("");
+    setCargandoPerfilPublico(false);
+    setVistaAnteriorPerfil("inicio");
+    setVistaActiva("inicio");
   };
 
   if (!usuario) {
@@ -2209,7 +2487,9 @@ function App() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand-block">
-          <span className="brand-icon">♫</span>
+          <span className="brand-icon">
+            <IstreamLogo />
+          </span>
           <span>iStream</span>
         </div>
 
@@ -2219,6 +2499,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "inicio" ? "active" : ""}`}
             onClick={() => cambiarVista("inicio")}
           >
+            <IconoInicio />
             Inicio
           </button>
           <button
@@ -2226,6 +2507,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "social" ? "active" : ""}`}
             onClick={() => cambiarVista("social")}
           >
+            <IconoSocial />
             Social
           </button>
           <button
@@ -2233,6 +2515,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "artistas" ? "active" : ""}`}
             onClick={() => cambiarVista("artistas")}
           >
+            <IconoArtistas />
             Artistas
           </button>
           <button
@@ -2240,6 +2523,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "biblioteca" ? "active" : ""}`}
             onClick={() => cambiarVista("biblioteca")}
           >
+            <IconoBiblioteca />
             Tu biblioteca
           </button>
           <button
@@ -2247,6 +2531,7 @@ function App() {
             className={`sidebar-link ${vistaActiva === "perfil" ? "active" : ""}`}
             onClick={() => cambiarVista("perfil")}
           >
+            <IconoPerfil />
             Perfil
           </button>
           {usuario.rol === "artista" && (
@@ -2255,6 +2540,7 @@ function App() {
               className={`sidebar-link ${vistaActiva === "mi-musica" ? "active" : ""}`}
               onClick={() => cambiarVista("mi-musica")}
             >
+              <IconoMiMusica />
               Mi música
             </button>
           )}
@@ -2403,7 +2689,6 @@ function App() {
                       <ul>
                         {resultadosBusqueda.canciones.map((cancion, indice) => {
                           const claveMenuPlaylist = `${cancion.id || cancion.titulo}-${cancion.artista}-${indice}`;
-                          const hayMultiplesPlaylists = playlistsUsuario.length > 1;
 
                           return (
                           <li key={cancion.id || claveMenuPlaylist}>
@@ -2419,43 +2704,41 @@ function App() {
                               >
                                 {esCancionFavorita(cancion) ? "♥ Favorita" : "♡ Favorita"}
                               </button>
-                              {hayMultiplesPlaylists ? (
-                                <div className="search-playlist-picker">
-                                  <button
-                                    type="button"
-                                    className="secondary-link-button"
-                                    onClick={() =>
-                                      setMenuAgregarPlaylistCancionId((anterior) =>
-                                        anterior === claveMenuPlaylist ? null : claveMenuPlaylist
-                                      )
-                                    }
-                                  >
-                                    Agregar a playlist
-                                  </button>
-                                  {menuAgregarPlaylistCancionId === claveMenuPlaylist && (
-                                    <div className="search-playlist-menu">
-                                      {playlistsUsuario.map((playlist) => (
-                                        <button
-                                          key={playlist.id}
-                                          type="button"
-                                          className="search-playlist-menu-item"
-                                          onClick={() => seleccionarPlaylistParaCancion(cancion, playlist.id)}
-                                        >
-                                          {playlist.nombre}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
+                              <div className="search-playlist-picker">
                                 <button
                                   type="button"
                                   className="secondary-link-button"
-                                  onClick={() => agregarAPlaylist(cancion)}
+                                  onClick={() => {
+                                    if (playlistsUsuario.length === 0) {
+                                      mostrarMensajeReproductor(
+                                        "Aún no tienes playlists creadas. Crea una para agregar canciones.",
+                                        "error"
+                                      );
+                                      return;
+                                    }
+
+                                    setMenuAgregarPlaylistCancionId((anterior) =>
+                                      anterior === claveMenuPlaylist ? null : claveMenuPlaylist
+                                    );
+                                  }}
                                 >
                                   Agregar a playlist
                                 </button>
-                              )}
+                                {menuAgregarPlaylistCancionId === claveMenuPlaylist && (
+                                  <div className="search-playlist-menu">
+                                    {playlistsUsuario.map((playlist) => (
+                                      <button
+                                        key={playlist.id}
+                                        type="button"
+                                        className="search-playlist-menu-item"
+                                        onClick={() => seleccionarPlaylistParaCancion(cancion, playlist.id)}
+                                      >
+                                        {playlist.nombre}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </li>
                           );
@@ -2505,247 +2788,361 @@ function App() {
 
         {vistaActiva === "biblioteca" ? (
           <section className="section-block library-shell">
-            <div className="library-hero">
-              <div
-                className={obtenerClaseCover("playlist-cover", cancionActual, obtenerPortadaCancionResuelta)}
-                style={obtenerEstiloCover(cancionActual, obtenerPortadaCancionResuelta)}
-              ></div>
-              <div className="library-hero-meta">
-                <span className="section-label">TU BIBLIOTECA</span>
-                <h2>{playlistActiva ? playlistActiva.nombre : "Crea tu playlist"}</h2>
-                <p>
-                  {playlistActiva
-                    ? `${miPlaylist.length} canciones • ${Math.floor(miPlaylist.reduce((sum, c) => sum + (c.duracion || 0), 0) / 60)} min`
-                    : "Sin playlist creada"}
-                </p>
-                <div className="library-chips">
-                  <span>Playlists</span>
-                  <span>Favoritas</span>
-                </div>
-              </div>
-            </div>
-
-            {playlistsUsuario.length > 0 && (
-              <div className="library-playlist-strip">
-                {playlistsUsuario.map((playlist) => (
-                  <button
-                    key={playlist.id}
-                    type="button"
-                    className={`library-playlist-pill ${playlist.id === playlistSeleccionadaId ? "active" : ""}`}
-                    onClick={() => {
-                      setPlaylistSeleccionadaId(playlist.id);
-                      setIndiceCancionActual(0);
-                    }}
-                  >
-                    {playlist.nombre}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="library-toolbar">
-              <button
-                type="button"
-                className="player-button"
-                onClick={() => miPlaylist.length > 0 && reproducirDesdeCola(miPlaylist, 0)}
-                disabled={!playlistActiva || miPlaylist.length === 0}
-              >
-                ▶ Reproducir
-              </button>
-
-              <div className="playlist-controls-menu">
-                <button
-                  type="button"
-                  className="secondary-link-button table-action-button"
-                  onClick={abrirFormularioPlaylist}
-                  aria-label="Crear playlist"
-                >
-                  +
-                </button>
-                <button
-                  type="button"
-                  className="secondary-link-button table-action-button"
-                  onClick={() => setMenuPlaylistAbierto((anterior) => !anterior)}
-                  aria-label="Más opciones"
-                >
-                  ...
-                </button>
-                {menuPlaylistAbierto && (
-                  <div className="playlist-dropdown-menu">
-                    <button
-                      type="button"
-                      className="playlist-dropdown-item"
-                      onClick={eliminarPlaylistCompleta}
-                      disabled={!playlistActiva}
-                    >
-                      Eliminar playlist
-                    </button>
+            {playlistSeleccionadaId === null ? (
+              <>
+                <div className="library-grid-header">
+                  <div>
+                    <span className="section-label">TU BIBLIOTECA</span>
+                    <h2>{playlistsUsuario.length + 1} playlists</h2>
+                    <p className="muted">
+                      {cargandoPlaylists
+                        ? "Cargando tus playlists..."
+                        : "Tus favoritas se guardan solas. Creá el resto a tu gusto."}
+                    </p>
+                    {errorPlaylists && <p className="form-error">{errorPlaylists}</p>}
                   </div>
-                )}
-              </div>
-            </div>
+                  <button type="button" className="player-button" onClick={abrirFormularioPlaylist}>
+                    + Crear playlist
+                  </button>
+                </div>
 
-            <div className="library-layout">
-                {crearPlaylistAbierto && (
-                  <form className="playlist-create-inline" onSubmit={crearPlaylist}>
-                    <input
-                      className="playlist-create-input"
-                      type="text"
-                      value={nombreNuevaPlaylist}
-                      onChange={(evento) => setNombreNuevaPlaylist(evento.target.value)}
-                      placeholder="Nombre de la playlist"
-                      autoFocus
-                    />
-                    <div className="playlist-create-actions">
-                      <button type="submit" className="playlist-create-confirm" disabled={!nombreNuevaPlaylist.trim()}>
-                        Crear
-                      </button>
-                      <button type="button" className="playlist-create-cancel" onClick={cancelarCreacionPlaylist}>
-                        Cancelar
+                <div className="library-grid">
+                  <button
+                    type="button"
+                    className="library-playlist-card library-playlist-card--fav"
+                    onClick={() => abrirPlaylist("favoritos")}
+                  >
+                    <div className="library-playlist-cover library-playlist-cover--fav"></div>
+                    <div className="library-playlist-card-body">
+                      <strong>Mis favoritos</strong>
+                      <p>Playlist automática • {favoritos.length} canciones</p>
+                    </div>
+                    <span className="library-fav-badge">Se actualiza con ♥</span>
+                  </button>
+
+                  {playlistsUsuario.map((playlist) => (
+                    <button
+                      key={playlist.id}
+                      type="button"
+                      className="library-playlist-card"
+                      onClick={() => abrirPlaylist(playlist.id)}
+                    >
+                      <div
+                        className={`library-playlist-cover${playlist.portada ? " library-playlist-cover--image" : ""}`}
+                        style={playlist.portada ? { backgroundImage: `url("${resolverUrlImagen(playlist.portada)}")` } : undefined}
+                      ></div>
+                      <div className="library-playlist-card-body">
+                        <strong>{playlist.nombre}</strong>
+                        <p>
+                          Playlist{!playlist.publica ? " · 🔒" : ""} • {playlist.canciones.length} canciones
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+
+                  <button type="button" className="library-create-tile" onClick={abrirFormularioPlaylist}>
+                    <span className="library-create-plus">+</span>
+                    <span>Crear playlist</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="library-detail">
+                <button type="button" className="backlink" onClick={volverAGrillaBiblioteca}>
+                  ← Volver a tu biblioteca
+                </button>
+
+                {playlistSeleccionadaId === "favoritos" ? (
+                  <>
+                    <div className="library-detail-header">
+                      <div className="library-detail-cover library-detail-cover--fav"></div>
+                      <div>
+                        <span className="section-label library-detail-label--fav">PLAYLIST AUTOMÁTICA</span>
+                        <h2>Mis favoritos</h2>
+                        <p>{favoritos.length} canciones • se llena sola con ♥</p>
+                      </div>
+                    </div>
+
+                    <div className="library-detail-actions">
+                      <button
+                        type="button"
+                        className="player-button"
+                        onClick={() => favoritos.length > 0 && reproducirDesdeCola(favoritos.map((f) => f.cancion), 0)}
+                        disabled={favoritos.length === 0}
+                      >
+                        ▶ Reproducir
                       </button>
                     </div>
-                  </form>
-                )}
-              {playlistActiva && (
-                <article className="library-main-panel">
-                  {miPlaylist.length === 0 ? (
-                    <p className="search-empty">Tu playlist está vacía. Busca canciones y agrégalas.</p>
-                  ) : (
-                    <table className="playlist-table library-table">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>TÍTULO</th>
-                        <th>ÁLBUM</th>
-                        <th>DURACIÓN</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {miPlaylist.map((song, index) => (
-                        <tr key={song.id} onClick={() => verCancion(miPlaylist, index)}>
-                          <td>{index + 1}</td>
-                          <td>
-                            <div className="song-cell">
-                              <div
-                                className={obtenerClaseCover("mini-cover", song, obtenerPortadaCancionResuelta)}
-                                style={obtenerEstiloCover(song, obtenerPortadaCancionResuelta)}
-                              ></div>
-                              <div>
-                                <div className="song-title-row">{song.titulo}</div>
-                                <div className="song-artist-row">{song.artista}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>{song.album}</td>
-                          <td>{Math.floor((song.duracion || 0) / 60)}:{String(Math.floor((song.duracion || 0) % 60)).padStart(2, "0")}</td>
-                          <td>
-                            <div className="song-actions-menu">
-                              <button
-                                type="button"
-                                className="secondary-link-button table-action-button song-action-trigger"
-                                aria-label="Acciones de la canción"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const claveMenu = `library-${song.id}-${index}`;
-                                  setMenuAccionesCancionId((anterior) =>
-                                    anterior === claveMenu ? null : claveMenu
-                                  );
-                                }}
-                              >
-                                ⋯
-                              </button>
 
-                              {menuAccionesCancionId === `library-${song.id}-${index}` && (
-                                <div className="playlist-dropdown-menu song-row-dropdown">
-                                  <button
-                                    type="button"
-                                    className="playlist-dropdown-item"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      alternarFavoritoCancion(song);
-                                      setMenuAccionesCancionId(null);
-                                    }}
-                                  >
-                                    {esCancionFavorita(song)
-                                      ? "Quitar de favoritas"
-                                      : "Agregar a favoritas"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="playlist-dropdown-item"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      abrirCompartirCancion(song);
-                                      setMenuAccionesCancionId(null);
-                                    }}
-                                  >
-                                    Compartir
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="playlist-dropdown-item"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      eliminarDePlaylist(song.id);
-                                    }}
-                                  >
-                                    Eliminar de playlist
-                                  </button>
+                    {errorFavoritos && <p className="form-error">{errorFavoritos}</p>}
+                    {cargandoFavoritos && <p className="search-empty">Cargando favoritas...</p>}
+
+                    {!cargandoFavoritos && favoritos.length === 0 && (
+                      <p className="search-empty">Aún no tienes canciones favoritas.</p>
+                    )}
+
+                    {!cargandoFavoritos && favoritos.length > 0 && (
+                      <table className="playlist-table library-table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>TÍTULO</th>
+                            <th>ÁLBUM</th>
+                            <th>DURACIÓN</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {favoritos.map((favorito, indice) => (
+                            <tr key={favorito.id} onClick={() => verCancion(favoritos.map((f) => f.cancion), indice)}>
+                              <td>{indice + 1}</td>
+                              <td>
+                                <div className="song-cell">
+                                  <div
+                                    className={obtenerClaseCover("mini-cover", favorito.cancion, obtenerPortadaCancionResuelta)}
+                                    style={obtenerEstiloCover(favorito.cancion, obtenerPortadaCancionResuelta)}
+                                  ></div>
+                                  <div>
+                                    <div className="song-title-row">{favorito.cancion?.titulo || "Canción desconocida"}</div>
+                                    <div className="song-artist-row">{favorito.cancion?.artista || "Artista desconocido"}</div>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    </table>
-                  )}
-                </article>
-              )}
-
-              <aside className="library-side-panel">
-                <div className="history-header">
-                  <h3>Canciones favoritas</h3>
-                </div>
-
-                {errorFavoritos && <p className="form-error">{errorFavoritos}</p>}
-                {cargandoFavoritos && <p className="search-empty">Cargando favoritas...</p>}
-
-                {!cargandoFavoritos && favoritos.length === 0 && (
-                  <p className="search-empty">Aún no tienes canciones favoritas.</p>
-                )}
-
-                {!cargandoFavoritos && favoritos.length > 0 && (
-                  <ul className="history-list library-favorites-list">
-                    {favoritos.map((favorito, indice) => (
-                      <li className="history-item library-favorite-item" key={favorito.id}>
+                              </td>
+                              <td>{favorito.cancion?.album || "—"}</td>
+                              <td>—</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="library-fav-remove"
+                                  aria-label="Quitar de favoritas"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    quitarDeFavoritos(favorito.id);
+                                  }}
+                                >
+                                  ♥
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </>
+                ) : (
+                  playlistActiva && (
+                    <>
+                      <div className="library-detail-header">
+                        <div
+                          className={`library-detail-cover${playlistActiva.portada ? " library-detail-cover--image" : ""}`}
+                          style={playlistActiva.portada ? { backgroundImage: `url("${resolverUrlImagen(playlistActiva.portada)}")` } : undefined}
+                        ></div>
                         <div>
-                          <strong>{favorito.cancion?.titulo || "Canción desconocida"}</strong>
-                          <p>{favorito.cancion?.artista || "Artista desconocido"} • {favorito.cancion?.album || "Sin álbum"}</p>
+                          <span className="section-label">PLAYLIST</span>
+                          <h2>{playlistActiva.nombre}</h2>
+                          <p>
+                            {playlistActiva.publica ? "🌐 Pública" : "🔒 Privada"} · {miPlaylist.length} canciones • {Math.floor(miPlaylist.reduce((sum, c) => sum + (c.duracion || 0), 0) / 60)} min
+                          </p>
+                          {playlistActiva.descripcion && <p className="muted">{playlistActiva.descripcion}</p>}
                         </div>
-                        <div className="favorite-actions">
+                      </div>
+
+                      <div className="library-detail-actions">
+                        <button
+                          type="button"
+                          className="player-button"
+                          onClick={() => miPlaylist.length > 0 && reproducirDesdeCola(miPlaylist, 0)}
+                          disabled={miPlaylist.length === 0}
+                        >
+                          ▶ Reproducir
+                        </button>
+
+                        <div className="playlist-controls-menu">
                           <button
                             type="button"
                             className="secondary-link-button table-action-button"
-                            onClick={() => reproducirDesdeCola(favoritos.map((f) => f.cancion), indice)}
+                            onClick={() => setMenuPlaylistAbierto((anterior) => !anterior)}
+                            aria-label="Más opciones"
                           >
-                            ▶
+                            ⋯
                           </button>
-                          <button
-                            type="button"
-                            className="delete-button"
-                            onClick={() => quitarDeFavoritos(favorito.id)}
-                          >
-                            ✕
-                          </button>
+                          {menuPlaylistAbierto && (
+                            <div className="playlist-dropdown-menu">
+                              <button type="button" className="playlist-dropdown-item" onClick={alternarPrivacidadPlaylist}>
+                                {playlistActiva.publica ? "Hacer privada" : "Hacer pública"}
+                              </button>
+                              <button type="button" className="playlist-dropdown-item" onClick={eliminarPlaylistCompleta}>
+                                Eliminar playlist
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      </li>
-                    ))}
-                  </ul>
+                      </div>
+
+                      {miPlaylist.length === 0 ? (
+                        <p className="search-empty">Tu playlist está vacía. Busca canciones y agrégalas.</p>
+                      ) : (
+                        <table className="playlist-table library-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>TÍTULO</th>
+                              <th>ÁLBUM</th>
+                              <th>DURACIÓN</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {miPlaylist.map((song, index) => (
+                              <tr key={song.id} onClick={() => verCancion(miPlaylist, index)}>
+                                <td>{index + 1}</td>
+                                <td>
+                                  <div className="song-cell">
+                                    <div
+                                      className={obtenerClaseCover("mini-cover", song, obtenerPortadaCancionResuelta)}
+                                      style={obtenerEstiloCover(song, obtenerPortadaCancionResuelta)}
+                                    ></div>
+                                    <div>
+                                      <div className="song-title-row">{song.titulo}</div>
+                                      <div className="song-artist-row">{song.artista}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>{song.album}</td>
+                                <td>{Math.floor((song.duracion || 0) / 60)}:{String(Math.floor((song.duracion || 0) % 60)).padStart(2, "0")}</td>
+                                <td>
+                                  <div className="song-actions-menu">
+                                    <button
+                                      type="button"
+                                      className="secondary-link-button table-action-button song-action-trigger"
+                                      aria-label="Acciones de la canción"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const claveMenu = `library-${song.id}-${index}`;
+                                        setMenuAccionesCancionId((anterior) =>
+                                          anterior === claveMenu ? null : claveMenu
+                                        );
+                                      }}
+                                    >
+                                      ⋯
+                                    </button>
+
+                                    {menuAccionesCancionId === `library-${song.id}-${index}` && (
+                                      <div className="playlist-dropdown-menu song-row-dropdown">
+                                        <button
+                                          type="button"
+                                          className="playlist-dropdown-item"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            alternarFavoritoCancion(song);
+                                            setMenuAccionesCancionId(null);
+                                          }}
+                                        >
+                                          {esCancionFavorita(song)
+                                            ? "Quitar de favoritas"
+                                            : "Agregar a favoritas"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="playlist-dropdown-item"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            abrirCompartirCancion(song);
+                                            setMenuAccionesCancionId(null);
+                                          }}
+                                        >
+                                          Compartir
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="playlist-dropdown-item"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            eliminarDePlaylist(song.id);
+                                          }}
+                                        >
+                                          Eliminar de playlist
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </>
+                  )
                 )}
-              </aside>
-            </div>
+              </div>
+            )}
+
+            {crearPlaylistAbierto && (
+              <div className="crop-modal-backdrop" onClick={cancelarCreacionPlaylist}>
+                <div className="crop-modal-card library-create-modal" onClick={(evento) => evento.stopPropagation()}>
+                  <div className="library-create-modal-head">
+                    <h3>Crear playlist</h3>
+                    <button type="button" className="modal-close-btn" onClick={cancelarCreacionPlaylist} aria-label="Cerrar">
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={crearPlaylist}>
+                    <div className="library-create-modal-body">
+                      <label className="library-create-cover-picker">
+                        {portadaNuevaPlaylistPreview ? (
+                          <img src={portadaNuevaPlaylistPreview} alt="" />
+                        ) : (
+                          <span>
+                            Portada
+                            <br />
+                            (opcional)
+                          </span>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          hidden
+                          onChange={(evento) => seleccionarPortadaNuevaPlaylist(evento.target.files?.[0])}
+                        />
+                      </label>
+
+                      <div className="library-create-modal-fields">
+                        <label className="field">
+                          <span>NOMBRE</span>
+                          <input
+                            type="text"
+                            value={nombreNuevaPlaylist}
+                            onChange={(evento) => setNombreNuevaPlaylist(evento.target.value)}
+                            placeholder="Mi playlist"
+                            autoFocus
+                          />
+                        </label>
+                        <label className="field">
+                          <span>DESCRIPCIÓN (OPCIONAL)</span>
+                          <textarea
+                            rows={2}
+                            value={descripcionNuevaPlaylist}
+                            onChange={(evento) => setDescripcionNuevaPlaylist(evento.target.value)}
+                            placeholder="Agregá una descripción"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="crop-modal-actions">
+                      <button type="button" className="secondary-link-button" onClick={cancelarCreacionPlaylist}>
+                        Cancelar
+                      </button>
+                      <button type="submit" className="save-button" disabled={!nombreNuevaPlaylist.trim()}>
+                        Crear
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </section>
         ) : vistaActiva === "playlist" ? (
           <section className="playlist-screen">
@@ -2861,31 +3258,7 @@ function App() {
             <div className="player-title">{cancionVistaPrevia.titulo}</div>
             <div className="player-artist">
               {cancionVistaPrevia.artista} •{" "}
-              {playlistsUsuario.length > 1 ? (
-                <span className="player-add-playlist-picker">
-                  <button
-                    type="button"
-                    className="player-add-playlist-button"
-                    onClick={agregarCancionActualAPlaylist}
-                  >
-                    Agregar a playlist
-                  </button>
-                  {menuAgregarPlaylistCancionId === PLAYER_PLAYLIST_MENU_ID && (
-                    <div className="search-playlist-menu player-playlist-menu">
-                      {playlistsUsuario.map((playlist) => (
-                        <button
-                          key={playlist.id}
-                          type="button"
-                          className="search-playlist-menu-item"
-                          onClick={() => seleccionarPlaylistParaCancion(cancionVistaPrevia, playlist.id)}
-                        >
-                          {playlist.nombre}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </span>
-              ) : (
+              <span className="player-add-playlist-picker">
                 <button
                   type="button"
                   className="player-add-playlist-button"
@@ -2893,7 +3266,21 @@ function App() {
                 >
                   Agregar a playlist
                 </button>
-              )}
+                {menuAgregarPlaylistCancionId === PLAYER_PLAYLIST_MENU_ID && (
+                  <div className="search-playlist-menu player-playlist-menu">
+                    {playlistsUsuario.map((playlist) => (
+                      <button
+                        key={playlist.id}
+                        type="button"
+                        className="search-playlist-menu-item"
+                        onClick={() => seleccionarPlaylistParaCancion(cancionVistaPrevia, playlist.id)}
+                      >
+                        {playlist.nombre}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </span>
               <button
                 type="button"
                 className="secondary-link-button favorite-inline-button"
@@ -3010,6 +3397,7 @@ function App() {
             onDejarDeSeguir={dejarDeSeguirDesdePerfilPublico}
             onAbrirChat={abrirChatConUsuario}
             onReproducirCancion={verCancion}
+            onVerPerfilUsuario={verPerfilAmigo}
             onVolver={() => cambiarVista(vistaAnteriorPerfil)}
           />
         ) : vistaActiva === "artistas" ? (
@@ -3200,7 +3588,13 @@ function App() {
                         <ul className="sp-user-list">
                           {usuariosSugeridosSeguidores.map((u) => (
                             <li key={u.id} className="sp-user-row">
-                              <span className="sp-avatar">{String(u.nombre || "U").charAt(0).toUpperCase()}</span>
+                              <span className="sp-avatar">
+                                {u.fotoPerfil ? (
+                                  <img src={resolverUrlImagen(u.fotoPerfil)} alt={u.nombre} />
+                                ) : (
+                                  String(u.nombre || "U").charAt(0).toUpperCase()
+                                )}
+                              </span>
                               <div className="sp-user-info">
                                 <strong>{u.nombre}</strong>
                                 <span>{u.correo}</span>
@@ -3231,7 +3625,13 @@ function App() {
                         <ul className="sp-user-list">
                           {seguidores.map((s) => (
                             <li key={s.id} className="sp-user-row sp-user-row--clickable" onClick={() => verPerfilAmigo(s.id)} role="button" tabIndex={0}>
-                              <span className="sp-avatar">{String(s.nombre || "U").charAt(0).toUpperCase()}</span>
+                              <span className="sp-avatar">
+                                {s.fotoPerfil ? (
+                                  <img src={resolverUrlImagen(s.fotoPerfil)} alt={s.nombre} />
+                                ) : (
+                                  String(s.nombre || "U").charAt(0).toUpperCase()
+                                )}
+                              </span>
                               <div className="sp-user-info">
                                 <strong>{s.nombre || "Usuario"}</strong>
                               </div>
@@ -3251,7 +3651,13 @@ function App() {
                           {siguiendo.map((s) => (
                             <li key={s.id} className="sp-user-row">
                               <button type="button" className="sp-user-clickable" onClick={() => verPerfilAmigo(s.id)}>
-                                <span className="sp-avatar">{String(s.nombre || "U").charAt(0).toUpperCase()}</span>
+                                <span className="sp-avatar">
+                                  {s.fotoPerfil ? (
+                                    <img src={resolverUrlImagen(s.fotoPerfil)} alt={s.nombre} />
+                                  ) : (
+                                    String(s.nombre || "U").charAt(0).toUpperCase()
+                                  )}
+                                </span>
                                 <strong className="sp-user-name">{s.nombre}</strong>
                               </button>
                               <button type="button" className="sp-follow-btn sp-follow-btn--following" onClick={() => dejarDeSeguirUsuario(s.id)}>

@@ -24,6 +24,7 @@
   --accent-soft: rgba(37, 99, 235, 0.14);
   --success: #16a34a;
   --danger: #e11d48;
+  --fav-soft: rgba(225, 29, 72, 0.1);
   --shadow-lg: 0 20px 45px rgba(20, 22, 43, 0.1);
   --brand-gradient: linear-gradient(135deg, #7c3aed 0%, #2563eb 40%, #06b6d4 70%, #22c55e 100%);
   --on-accent: #ffffff;
@@ -46,6 +47,7 @@
   --accent-soft: rgba(47, 168, 188, 0.2);
   --success: #53db8a;
   --danger: #ff6b81;
+  --fav-soft: rgba(255, 107, 129, 0.14);
   --shadow-lg: 0 20px 60px rgba(2, 6, 14, 0.55);
   --brand-gradient: linear-gradient(45deg, #050a14 0%, #0e4a7a 35%, #2fa8bc 65%, #ffdf9e 100%);
   --on-accent: #04101c;
@@ -53,6 +55,10 @@
 
 html {
   font-family: inherit;
+}
+
+.brand-icon-glyph {
+  filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, 0.3));
 }
 
 body {

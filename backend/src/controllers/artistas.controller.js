@@ -46,15 +46,18 @@ exports.obtenerArtistas = async (req, res) => {
   try {
     const [artistasRows] = await pool.execute(
       `SELECT
-         id_artista,
-         nombre,
-         biografia,
-         foto_url,
-         portada_url,
-         generos
-       FROM artistas
-       WHERE estado = TRUE
-       ORDER BY nombre ASC
+         a.id_artista,
+         a.nombre,
+         a.biografia,
+         a.foto_url,
+         a.portada_url,
+         a.generos,
+         u.foto_perfil AS usuario_foto_perfil,
+         u.portada_url AS usuario_portada_url
+       FROM artistas a
+       LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
+       WHERE a.estado = TRUE
+       ORDER BY a.nombre ASC
        LIMIT 20`
     );
 
@@ -83,8 +86,8 @@ exports.obtenerArtistas = async (req, res) => {
           id: artista.id_artista,
           nombre: artista.nombre,
           biografia: artista.biografia || `Perfil público del artista ${artista.nombre}.`,
-          foto: artista.foto_url || "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80",
-          portada: artista.portada_url || null,
+          foto: artista.usuario_foto_perfil || artista.foto_url || "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80",
+          portada: artista.usuario_portada_url || artista.portada_url || null,
           generos: (artista.generos || "Sin género")
             .split(",")
             .map((genero) => genero.trim())
@@ -119,15 +122,18 @@ exports.obtenerPerfilArtista = async (req, res) => {
   try {
     const [artistaRows] = await pool.execute(
       `SELECT
-         id_artista,
-         nombre,
-         biografia,
-         foto_url,
-         portada_url,
-         generos
-       FROM artistas
-       WHERE estado = TRUE
-         AND nombre = ?
+         a.id_artista,
+         a.nombre,
+         a.biografia,
+         a.foto_url,
+         a.portada_url,
+         a.generos,
+         u.foto_perfil AS usuario_foto_perfil,
+         u.portada_url AS usuario_portada_url
+       FROM artistas a
+       LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
+       WHERE a.estado = TRUE
+         AND a.nombre = ?
        LIMIT 1`,
       [nombre]
     );
@@ -160,8 +166,8 @@ exports.obtenerPerfilArtista = async (req, res) => {
         id: artista.id_artista,
         nombre: artista.nombre,
         biografia: artista.biografia || `Perfil público del artista ${artista.nombre}.`,
-        foto: artista.foto_url || "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80",
-        portada: artista.portada_url || null,
+        foto: artista.usuario_foto_perfil || artista.foto_url || "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80",
+        portada: artista.usuario_portada_url || artista.portada_url || null,
         generos: (artista.generos || "Sin género")
           .split(",")
           .map((genero) => genero.trim())
